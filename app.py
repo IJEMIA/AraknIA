@@ -3,11 +3,11 @@ from openai import OpenAI
 
 # CONFIGURACIÓN DE PÁGINA
 st.set_page_config(
-page_title="Mi IA Personal",
-page_icon="🤖",
-layout="centered",
-initial_sidebar_state="collapsed",
-menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
+    page_title="Mi IA Personal",
+    page_icon="🤖",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+    menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
 )
 
 # CSS PARA APARIENCIA DE APP
@@ -37,43 +37,40 @@ st.caption("Asistente inteligente • Hecho con Streamlit")
 
 # CONEXIÓN CON GROQ
 try:
-client = OpenAI(
-base_url="https://api.groq.com/openai/v1&quot;,
-api_key=st.secrets["groq"]["api_key"]
-)
+    client = OpenAI(
+        base_url="https://api.groq.com/openai/v1",
+        api_key=st.secrets["groq"]["api_key"]
+    )
 except Exception:
-st.error("❌ Error de configuración: Revisa los 'Secrets' en Streamlit Cloud.")
-st.stop()
+    st.error("❌ Error de configuración: Revisa los 'Secrets' en Streamlit Cloud.")
+    st.stop()
 
 # HISTORIAL DE CHAT
 if "messages" not in st.session_state:
-st.session_state.messages = []
+    st.session_state.messages = []
 
 for message in st.session_state.messages:
-if message["role"] != "system":
-with st.chat_message(message["role"]):
-st.markdown(message["content"])
+    if message["role"] != "system":
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 # PROCESAR MENSAJES
 if prompt := st.chat_input("Escribe tu pregunta..."):
-with st.chat_message("user"):
-st.markdown(prompt)
-st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
-with st.chat_message("assistant"):
-try:
-mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
-stream = client.chat.completions.create(
-model="llama-3.1-8b-instant",
-messages=mensajes_api,
-stream=True,
-)
-response = st.write_stream(stream)
-st.session_state.messages.append({"role": "assistant", "content": response})
-except Exception:
-st.error("⚠️ Error en la IA. Intenta de nuevo.")
-if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-st.session_state.messages.pop()
-
-# PIE DE PÁGINA
-st.markdown("<div style='text-align:center;color:#888;font-size:0.8rem;margin-top:2rem'>🤖 Mi IA Personal</div>", unsafe_allow_html=True)
+    with st.chat_message("assistant"):
+        try:
+            mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+            stream = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=mensajes_api,
+                stream=True,
+            )
+            response = st.write_stream(stream)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        except Exception:
+            st.error("⚠️ Error en la IA. Intenta de nuevo.")
+            if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+                st.session_state.messages.pop()
