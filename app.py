@@ -1,8 +1,3 @@
-El error ocurre porque, al copiar el código, probablemente se incluyó una línea de texto explicativo (como "4. **Iconografía**: ...") que no pertenece al código Python, o el archivo tiene un problema de codificación de caracteres con los emojis fuera de las cadenas de texto.
-
-Aquí tienes el código **100% corregido y limpio**. Copia y pega **solo** el contenido del bloque de abajo en tu archivo `app.py`. Asegúrate de borrar todo lo que tenías antes en el archivo.
-
-```python
 import streamlit as st
 from openai import OpenAI
 
@@ -167,4 +162,3 @@ if prompt := st.chat_input("Consulta al Tejedor..."):
             st.error(f"⚠️ Los hilos se han enredado (Error de conexión): {e}")
             if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
                 st.session_state.messages.pop()
-```
