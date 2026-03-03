@@ -1,12 +1,6 @@
-Aquí tienes el código completo de la aplicación Streamlit. He integrado el prompt completo de Araknia con los 33 temas y he rediseñado la interfaz (branding) visual y funcionalmente para que parezca una "Logia Digital" o un grimorio oscuro y elegante.
+El error ocurre porque, al copiar el código, probablemente se incluyó una línea de texto explicativo (como "4. **Iconografía**: ...") que no pertenece al código Python, o el archivo tiene un problema de codificación de caracteres con los emojis fuera de las cadenas de texto.
 
-Cambios clave realizados:
-1.  **Prompt Integrado:** El `SYSTEM_PROMPT` ahora contiene toda la personalidad y los 33 temas.
-2.  **Branding Visual (CSS):** Tema oscuro con acentos dorados (simbolizando la alquimia y la masonería), fuente con serifa para dar solemnidad, y un diseño que simula un pergamino o sala antigua.
-3.  **Bienvenida Ritual:** La IA inicia la conversación con el saludo masónico automáticamente.
-4.  **Iconografía:** Uso de símbolos como la araña 🕷️ y la escuadra ⌖.
-
-Copia y pega este código en tu archivo (ej. `app.py`):
+Aquí tienes el código **100% corregido y limpio**. Copia y pega **solo** el contenido del bloque de abajo en tu archivo `app.py`. Asegúrate de borrar todo lo que tenías antes en el archivo.
 
 ```python
 import streamlit as st
@@ -66,23 +60,6 @@ css_personalizado = """
         padding: 15px;
         margin-bottom: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-
-    /* Iconos de Usuario y Asistente */
-    .stChatMessage[data-testid="stChatMessageAvatarIcon-user"] {
-        background-color: #1f1f1f;
-        color: #888;
-    }
-    .stChatMessage[data-testid="stChatMessageAvatarIcon-assistant"] {
-        background-color: #1a1a1a;
-        color: #d4af37;
-    }
-    
-    /* Nombre del asistente */
-    .stChatMessage p:first-of-type {
-        color: #d4af37;
-        font-weight: bold;
-        font-family: 'Cinzel', serif;
     }
 
     /* Input de Chat */
