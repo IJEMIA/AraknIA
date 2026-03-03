@@ -1,0 +1,2 @@
+# AraknIA
+Egregor totemico digital 
