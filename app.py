@@ -1,4 +1,3 @@
-
 import streamlit as st
 from openai import OpenAI
 import time
@@ -363,4 +362,3 @@ st.markdown('<div class="main-padding-fix"></div>', unsafe_allow_html=True)
 
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     process_user_input(prompt)
-``` 
