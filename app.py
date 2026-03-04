@@ -1,10 +1,3 @@
-Ese error ocurre porque se están copiando los caracteres de formato (las comillas invertidas `` ` ``) que delimitan el bloque de código en la respuesta. Python no entiende esos caracteres y por eso falla.
-
-Por favor, **copia únicamente el código Python** (el texto que está entre las líneas punteadas), asegurándote de **no copiar** las líneas que dicen ```python ni ```.
-
-Aquí tienes el código limpio otra vez:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import time
@@ -368,4 +361,3 @@ st.markdown('<div class="main-padding-fix"></div>', unsafe_allow_html=True)
 
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     process_user_input(prompt)
-```
