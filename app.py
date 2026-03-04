@@ -1,3 +1,10 @@
+Ese error ocurre porque se están copiando los caracteres de formato (las comillas invertidas `` ` ``) que delimitan el bloque de código en la respuesta. Python no entiende esos caracteres y por eso falla.
+
+Por favor, **copia únicamente el código Python** (el texto que está entre las líneas punteadas), asegurándote de **no copiar** las líneas que dicen ```python ni ```.
+
+Aquí tienes el código limpio otra vez:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import time
@@ -123,10 +130,9 @@ h1 {
 .stInfo { background: rgba(6, 78, 59, 0.3) !important; color: #ffffff !important; }
 
 /* --- CORRECCIÓN MÍCROFONO FLOTANTE PERMANENTE --- */
-/* Aplicamos estilo directo al contenedor del componente de micrófono */
 div[data-testid="stVerticalBlock"]:has(iframe[title="streamlit_mic_recorder.streamlit_mic_recorder"]) {
     position: fixed !important;
-    bottom: 90px; /* Altura suficiente para no chocar con el chat_input */
+    bottom: 90px;
     left: 20px;
     z-index: 99999 !important;
     background: rgba(6, 78, 59, 0.9);
@@ -136,12 +142,10 @@ div[data-testid="stVerticalBlock"]:has(iframe[title="streamlit_mic_recorder.stre
     border: 2px solid #facc15;
 }
 
-/* Ocultamos el label "streamlit_mic_recorder..." que a veces aparece */
 div[data-testid="stVerticalBlock"]:has(iframe[title="streamlit_mic_recorder.streamlit_mic_recorder"]) label {
     display: none !important;
 }
 
-/* Ajuste del iframe interno */
 iframe[title="streamlit_mic_recorder.streamlit_mic_recorder"] {
     border-radius: 50% !important;
 }
@@ -327,11 +331,6 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 # --- 1. LÓGICA DE PROCESAMIENTO DE AUDIO ---
-# El botón de micrófono se renderiza aquí.
-# El CSS (arriba) se encarga de moverlo visualmente a la posición flotante fija.
-# Esto evita que "desaparezca" porque el componente siempre está en el DOM,
-# solo que visualmente movido con CSS.
-
 audio_data = mic_recorder(
     start_prompt="🎤 Iniciar grabación",
     stop_prompt="🛑 Detener",
