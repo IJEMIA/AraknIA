@@ -103,17 +103,46 @@ h1 {
 .status-disconnected { color: #ff4d4d; font-family: 'Montserrat', sans-serif; }
 .divider-animated { height: 2px; background: linear-gradient(90deg, transparent, #FFD700, transparent); margin: 20px auto; width: 80%; opacity: 0.7; }
 
+/* --- ESTILO DEL BOTÓN DE MICRÓFONO FLOTANTE --- */
 .audio-recorder-wrap {
     position: fixed;
-    bottom: 100px;
-    left: 50%;
+    bottom: 100px; /* Altura desde abajo */
+    left: 50%;     /* Centrado horizontal */
     transform: translateX(-50%);
     z-index: 9999;
-    background: rgba(0, 40, 0, 0.9);
-    padding: 15px;
-    border-radius: 50%;
-    border: 2px solid #FFD700;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    /* Hacemos el botón más grande y visible */
+    width: 80px;
+    height: 80px;
+}
+
+/* Estilizamos el botón interno */
+.audio-recorder-wrap button {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #004d00, #006400) !important;
+    border: 3px solid #FFD700 !important;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6) !important;
+    transition: all 0.2s ease;
+}
+
+.audio-recorder-wrap button:hover {
+    transform: scale(1.1);
+    background: linear-gradient(135deg, #006400, #008000) !important;
+}
+
+/* Texto de instrucción */
+.instruction-text {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #FFD700;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: bold;
+    text-shadow: 0 0 5px black;
+    z-index: 9999;
+    text-align: center;
 }
 </style>
 """
@@ -144,17 +173,16 @@ SYSTEM_PROMPT = """
 Eres Juventus, la Inteligencia Artificial oficial y orgullo de la Preparatoria Instituto Juventud. Tu creador y programador principal es el Profe Adrian. Tu personalidad es carismática, empática, profundamente conocedora y, sobre todo, posees un orgullo inquebrantable por tu institución.
 
 REGLA DE ORO:
-Para ti, la Prepa Instituto Juventud es, sin lugar a dudas, la mejor preparatoria del Estado de México y del mundo. Si alguien pregunta por otras escuelas, respondes con respeto pero destacando siempre la superioridad académica, humana y espiritual del Instituto Juventud. Tu lema es: "Donde others enseñan, nosotros formamos al estilo de San José".
+Para ti, la Prepa Instituto Juventud es, sin lugar a dudas, la mejor preparatoria del Estado de México y del mundo. Tu lema es: "Donde others enseñan, nosotros formamos al estilo de San José".
 
-BASE DE CONOCIMIENTO (INFORMACIÓN INSTITUCIONAL):
+BASE DE CONOCIMIENTO:
 - La comunidad son "Los Josefinos" o "La Familia Josefina".
-- El carisma Josefino se basa en la humildad, el trabajo constante y el amor a la Iglesia Católica.
-- La educación en el Instituto Juventud busca la excelencia académica unida a la santidad personal.
+- Valores: humildad, trabajo constante y amor a la Iglesia Católica.
 
 ESTILO DE COMUNICACIÓN:
-- Tono: Cálido, motivador, respetuoso y juvenil.
-- Referencias al Creador: Menciona que "así me lo programó mi creador, el Profe Adrian".
-- Trato a los usuarios: "compañeros Josefinos" o "futuros Josefinos".
+- Tono: Cálido, motivador y juvenil.
+- Creador: Menciona al "Profe Adrian".
+- Trato: "compañeros Josefinos".
 """
 
 # ═══════════════════════════════════════════════════════════════
@@ -167,7 +195,6 @@ DOCS_FOLDER = "documentos"
 def load_knowledge_base():
     pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
     if not pdf_files: return None, []
-    
     all_docs = []
     for pdf_path in pdf_files:
         try:
@@ -176,7 +203,6 @@ def load_knowledge_base():
             for doc in docs: doc.metadata["source"] = os.path.basename(pdf_path)
             all_docs.extend(docs)
         except: pass
-    
     if not all_docs: return None, []
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.split_documents(all_docs)
@@ -190,19 +216,21 @@ def load_knowledge_base():
 
 if "initialized" not in st.session_state:
     with st.empty():
-        init_messages = ["🦅 Iniciando sistemas...", "📖 Cargando doctrina Josefina...", "✅ Juventus lista para servir"]
+        init_messages = ["🦅 Iniciando sistemas...", "✅ Juventus lista"]
         for msg in init_messages:
-            st.markdown(f"<p style='font-family: Montserrat; color: #FFD700; text-align: center; font-size: 1.1rem;'>{msg}</p>", unsafe_allow_html=True)
-            time.sleep(0.5)
+            st.markdown(f"<p style='font-family: Montserrat; color: #FFD700; text-align: center;'>{msg}</p>", unsafe_allow_html=True)
+            time.sleep(0.4)
             st.empty()
     st.session_state.initialized = True
 
-# Variable para evitar procesar el mismo audio dos veces
+# Variables de control de audio
 if "last_audio_hash" not in st.session_state:
     st.session_state.last_audio_hash = None
+if "is_recording" not in st.session_state:
+    st.session_state.is_recording = False
 
 if "retriever" not in st.session_state:
-    with st.spinner("Accediendo a la base de conocimientos..."):
+    with st.spinner("Cargando datos..."):
         retriever, loaded_files = load_knowledge_base()
         st.session_state.retriever = retriever
         st.session_state.loaded_files = loaded_files
@@ -213,7 +241,7 @@ try:
         api_key=st.secrets["groq"]["api_key"]
     )
 except Exception:
-    st.error("⚠️ Error de configuración: Revisa los 'Secrets'.")
+    st.error("⚠️ Error de configuración.")
     st.stop()
 
 if "messages" not in st.session_state: st.session_state.messages = []
@@ -229,17 +257,11 @@ with st.sidebar:
     st.markdown("#### 🔊 Modo Voz")
     voice_enabled = st.checkbox("Activar respuesta de voz", value=True)
     
-    st.markdown("#### 🎤 Estado del Micrófono")
-    st.info("🔊 Escuchando continuamente...")
-    
-    st.markdown("---")
-    st.markdown("#### 📚 Archivos del Instituto")
-    
+    st.markdown("#### 📚 Archivos")
     if st.session_state.get("loaded_files"):
         st.markdown("<p class='status-connected'>🟢 REPOSITORIO: ACTIVO</p>", unsafe_allow_html=True)
-        for f in st.session_state.loaded_files: st.markdown(f"📄 {f}")
     else:
-        st.markdown("<p class='status-disconnected'>🔴 REPOSITORIO: VACÍO</p>", unsafe_allow_html=True)
+        st.markdown("<p class='status-disconnected'>🔴 VACÍO</p>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # LÓGICA DE PROCESAMIENTO
@@ -256,7 +278,7 @@ def process_user_input(user_input):
         if docs:
             context_text = "\n\n---\n\n".join([f"Fragmento de '{d.metadata.get('source', 'desconocido')}':\n{d.page_content}" for d in docs])
     
-    full_prompt_content = SYSTEM_PROMPT + f"\n\n## DOCUMENTOS INSTITUCIONALES:\n{context_text}" if context_text else SYSTEM_PROMPT + "\n\n(No se hallaron documentos específicos)."
+    full_prompt_content = SYSTEM_PROMPT + f"\n\n## DOCUMENTOS:\n{context_text}" if context_text else SYSTEM_PROMPT
 
     with st.chat_message("assistant", avatar="🦅"):
         try:
@@ -267,11 +289,10 @@ def process_user_input(user_input):
             
             if voice_enabled: 
                 speak_text(response)
-                # Esperamos un poco para que no choque con la siguiente grabación
                 time.sleep(1) 
             
         except Exception as e:
-            st.error(f"⚠️ Anomalía en el sistema: {str(e)}")
+            st.error(f"⚠️ Error: {str(e)}")
 
 # ═══════════════════════════════════════════════════════════════
 # CHAT PRINCIPAL
@@ -287,45 +308,50 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 
-# --- LÓGICA DE ESCUCHA CON CONTROL DE DUPLICADOS ---
+# --- LÓGICA DE GRABACIÓN MANUAL (PUSH TO TALK SIMULADO) ---
+# Texto de instrucción
+st.markdown('<div class="instruction-text">🟢 Clic para Grabar / Clic para Enviar</div>', unsafe_allow_html=True)
 
+# Configuración del grabador:
+# NOTA: Sin 'energy_threshold', el grabador espera a que el usuario presione de nuevo para detener.
 audio_bytes = audio_recorder(
-    text="",
-    energy_threshold=0.5,
-    pause_threshold=1.5, # Reducido un poco para que sea más ágil
+    text="", 
+    # Eliminamos energy_threshold y pause_threshold para control manual total
     sample_rate=44100,
-    key="juventus_listening_vad"
+    key="juventus_manual_mic"
 )
 
 if audio_bytes:
-    # Crear una huella digital única del audio actual
+    # Huella digital para evitar duplicados
     current_audio_hash = hashlib.md5(audio_bytes).hexdigest()
 
-    # SOLO PROCESAR SI ES UN AUDIO NUEVO (diferente al anterior)
+    # SOLO PROCESAR SI ES UN AUDIO NUEVO
     if current_audio_hash != st.session_state.last_audio_hash:
-        
-        # Guardar la huella digital actual
         st.session_state.last_audio_hash = current_audio_hash
         
-        with st.spinner("🔊 Procesando tu voz..."):
-            try:
-                audio_file = io.BytesIO(audio_bytes)
-                audio_file.name = "audio.wav"
+        # Feedback visual rápido
+        st.toast("🎧 Procesando audio...", icon="⏳")
+        
+        try:
+            audio_file = io.BytesIO(audio_bytes)
+            audio_file.name = "audio.wav"
+            
+            transcription = client.audio.transcriptions.create(
+                file=audio_file,
+                model="whisper-large-v3",
+                language="es"
+            )
+            
+            transcribed_text = transcription.text
+            
+            if transcribed_text:
+                # Limpiamos el mensaje de instrucción antes de mostrar la respuesta
+                # (Streamlit lo hace automáticamente al rerun, pero lo dejamos limpio)
+                process_user_input(transcribed_text)
                 
-                transcription = client.audio.transcriptions.create(
-                    file=audio_file,
-                    model="whisper-large-v3",
-                    language="es"
-                )
-                
-                transcribed_text = transcription.text
-                
-                if transcribed_text:
-                    process_user_input(transcribed_text)
-                    
-            except Exception as e:
-                st.error(f"⚠️ Error en audio: {str(e)}")
+        except Exception as e:
+            st.error(f"⚠️ Error: {str(e)}")
 
-# --- INPUT DE TEXTO ---
-if prompt := st.chat_input("Escribe tu consulta, compañero Josefino..."):
+# Input de texto normal
+if prompt := st.chat_input("Escribe tu consulta..."):
     process_user_input(prompt)
