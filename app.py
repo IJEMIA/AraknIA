@@ -6,6 +6,7 @@ import glob
 import streamlit.components.v1 as components
 from audio_recorder_streamlit import audio_recorder
 import io
+import hashlib
 
 # IMPORTACIONES PARA LANGCHAIN
 from langchain_community.document_loaders import PyPDFLoader
@@ -102,7 +103,6 @@ h1 {
 .status-disconnected { color: #ff4d4d; font-family: 'Montserrat', sans-serif; }
 .divider-animated { height: 2px; background: linear-gradient(90deg, transparent, #FFD700, transparent); margin: 20px auto; width: 80%; opacity: 0.7; }
 
-/* Estilo para el grabador de audio */
 .audio-recorder-wrap {
     position: fixed;
     bottom: 100px;
@@ -115,10 +115,6 @@ h1 {
     border: 2px solid #FFD700;
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
 }
-
-/* Ocultar el botón de pausa manual para que sea automático */
-button[title="Stop recording"] { display: none !important; } 
-
 </style>
 """
 st.markdown(css_juventus, unsafe_allow_html=True)
@@ -201,6 +197,10 @@ if "initialized" not in st.session_state:
             st.empty()
     st.session_state.initialized = True
 
+# Variable para evitar procesar el mismo audio dos veces
+if "last_audio_hash" not in st.session_state:
+    st.session_state.last_audio_hash = None
+
 if "retriever" not in st.session_state:
     with st.spinner("Accediendo a la base de conocimientos..."):
         retriever, loaded_files = load_knowledge_base()
@@ -226,12 +226,11 @@ with st.sidebar:
     st.markdown("### 🦅 PANEL JOSEFINO")
     st.markdown("<div class='divider-animated'></div>", unsafe_allow_html=True)
     
-    # Interruptor de Voz
     st.markdown("#### 🔊 Modo Voz")
     voice_enabled = st.checkbox("Activar respuesta de voz", value=True)
     
     st.markdown("#### 🎤 Estado del Micrófono")
-    st.info("🔊 Escuchando continuamente...\nHabla cuando quieras.")
+    st.info("🔊 Escuchando continuamente...")
     
     st.markdown("---")
     st.markdown("#### 📚 Archivos del Instituto")
@@ -268,10 +267,9 @@ def process_user_input(user_input):
             
             if voice_enabled: 
                 speak_text(response)
-                # IMPORTANTE: Esperar a que termine de hablar para no cortar la grabación
-                time.sleep(2) 
-                st.rerun() # Reiniciar para limpiar el estado y seguir escuchando
-                
+                # Esperamos un poco para que no choque con la siguiente grabación
+                time.sleep(1) 
+            
         except Exception as e:
             st.error(f"⚠️ Anomalía en el sistema: {str(e)}")
 
@@ -289,40 +287,45 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 
-# --- 1. LÓGICA DE ESCUCHA CONTINUA (VAD) ---
-# Usamos audio_recorder con energy_threshold.
-# Esto graba automáticamente cuando detecta sonido y para cuando hay silencio.
+# --- LÓGICA DE ESCUCHA CON CONTROL DE DUPLICADOS ---
 
 audio_bytes = audio_recorder(
     text="",
-    energy_threshold=0.5, # Sensibilidad (ajusta esto si no detecta tu voz)
-    pause_threshold=2.0,  # Segundos de silencio para cortar
+    energy_threshold=0.5,
+    pause_threshold=1.5, # Reducido un poco para que sea más ágil
     sample_rate=44100,
     key="juventus_listening_vad"
 )
 
 if audio_bytes:
-    with st.spinner("🔊 Procesando tu voz..."):
-        try:
-            # Convertir bytes a archivo para Whisper
-            audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = "audio.wav" # Whisper soja WAV
-            
-            transcription = client.audio.transcriptions.create(
-                file=audio_file,
-                model="whisper-large-v3",
-                language="es"
-            )
-            
-            transcribed_text = transcription.text
-            
-            if transcribed_text:
-                # Mostrar lo que entendió y procesar
-                process_user_input(transcribed_text)
-                
-        except Exception as e:
-            st.error(f"⚠️ Error en audio: {str(e)}")
+    # Crear una huella digital única del audio actual
+    current_audio_hash = hashlib.md5(audio_bytes).hexdigest()
 
-# --- 2. INPUT DE TEXTO (Alternativa) ---
+    # SOLO PROCESAR SI ES UN AUDIO NUEVO (diferente al anterior)
+    if current_audio_hash != st.session_state.last_audio_hash:
+        
+        # Guardar la huella digital actual
+        st.session_state.last_audio_hash = current_audio_hash
+        
+        with st.spinner("🔊 Procesando tu voz..."):
+            try:
+                audio_file = io.BytesIO(audio_bytes)
+                audio_file.name = "audio.wav"
+                
+                transcription = client.audio.transcriptions.create(
+                    file=audio_file,
+                    model="whisper-large-v3",
+                    language="es"
+                )
+                
+                transcribed_text = transcription.text
+                
+                if transcribed_text:
+                    process_user_input(transcribed_text)
+                    
+            except Exception as e:
+                st.error(f"⚠️ Error en audio: {str(e)}")
+
+# --- INPUT DE TEXTO ---
 if prompt := st.chat_input("Escribe tu consulta, compañero Josefino..."):
     process_user_input(prompt)
