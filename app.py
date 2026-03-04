@@ -1,6 +1,4 @@
-Aquí tienes el código modificado para **Juventud 2.0**. He ajustado la personalidad, los colores, el sistema de principios y la identidad visual tal como solicitaste, manteniendo la funcionalidad técnica intacta.
 
-```python
 import streamlit as st
 from openai import OpenAI
 import time
