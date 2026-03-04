@@ -11,4 +11,4 @@ faiss-cpu
 tiktoken
 sentence-transformers
 python-dotenv
-streamlit-mic-recorder
+audio-recorder-streamlit
