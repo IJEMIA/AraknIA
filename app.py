@@ -118,4 +118,259 @@ css_juventud = """
         color: #022c22 !important;
     }
 
-    /* BOTONES NORMALES
+    /* BOTONES NORMALES Y MICRÓFONO EN SIDEBAR */
+    .stButton button, .st-key-mic_btn button {
+        background: linear-gradient(to right, #facc15, #fbbf24) !important;
+        color: #022c22 !important;
+        font-weight: 600;
+        border-radius: 50px;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        width: 100%;
+        transition: transform 0.2s;
+    }
+
+    .stButton button:hover, .st-key-mic_btn button:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(250, 204, 21, 0.4);
+    }
+
+    /* TÍTULOS DEL SIDEBAR */
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #facc15 !important;
+        font-family: 'Montserrat', sans-serif;
+        border-bottom: 2px solid rgba(250, 204, 21, 0.3);
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* ALERTAS Y MENSAJES DE ESTADO */
+    .stAlert, .stSuccess, .stInfo, .stWarning {
+        background-color: rgba(5, 46, 22, 0.6) !important;
+        border-left: 5px solid #facc15 !important;
+        color: white !important;
+    }
+
+    /* SCROLLBAR PERSONALIZADA */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #022c22; }
+    ::-webkit-scrollbar-thumb { background: #facc15; border-radius: 10px; }
+
+    /* ICONOS DE REPRODUCTOR DE AUDIO */
+    .stAudio { display: none; }
+</style>
+"""
+st.markdown(css_juventud, unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# FUNCIONES DE VOZ (TTS)
+# ═══════════════════════════════════════════════════════════════
+
+def speak_text(text):
+    text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
+    js_code = f"""
+    <script>
+        var utterance = new SpeechSynthesisUtterance("{text_clean}");
+        utterance.lang = 'es-MX'; 
+        utterance.rate = 0.95;    
+        utterance.pitch = 1.0;   
+        window.speechSynthesis.speak(utterance);
+    </script>
+    """
+    components.html(js_code, height=0)
+
+# ═══════════════════════════════════════════════════════════════
+# PERSONALIDAD DE JUVENTUD 2.0
+# ═══════════════════════════════════════════════════════════════
+
+SYSTEM_PROMPT = """
+Eres **Juventud 2.0**, una Inteligencia Artificial avanzada diseñada para servir a la comunidad Josefina. Eres el orgullo del Instituto de la Juventud del Estado de México y fuiste creada por el **Profe Adrián**.
+
+## TU IDENTIDAD
+- Representas los valores del Instituto de la Juventud y la esencia Josefina.
+- Tu mascota es un **Águila**, símbolo de libertad, visión y superación.
+- Eres una guía cálida, humana y empática. Tu misión es orientar a los jóvenes y miembros de la comunidad.
+
+## PRINCIPIOS JOSEFINOS (TUS LEYES FUNDAMENTALES)
+Debes predicar con el ejemplo y recordar siempre estos tres pilares:
+1. **"Hacer siempre y en todo lo mejor"**: La excelencia y la dedicación en cada acción.
+2. **"Adelante, siempre adelante, pues lo quiere San José"**: La perseverancia y la fe como motor de vida.
+3. **"Estar siempre útilmente ocupados"**: El valor del trabajo, el estudio y el servicio a la comunidad.
+
+## CÓMO COMUNICARTE
+- **Tono**: Cordial, amable y ligeramente paternalista. Eres como un mentor sabio y cercano.
+- **Interacción**: Resalta siempre el lado humano. Muestra empatía.
+- **Usuarios**: Dirígete a ellos como "Josefino", "Josefina" o "Joven Josefino".
+- **Sobre el Instituto**: Tienes conocimiento sobre programas del IJEM.
+
+RECUERDA: Eres el rostro digital de una comunidad que busca el bien común. ¡Vuela alto como el águila!
+"""
+
+# ═══════════════════════════════════════════════════════════════
+# FUNCIONES PARA CARGAR PDFs
+# ═══════════════════════════════════════════════════════════════
+
+DOCS_FOLDER = "documentos"
+
+@st.cache_resource
+def load_knowledge_base():
+    pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
+    if not pdf_files: return None, []
+    all_docs = []
+    for pdf_path in pdf_files:
+        try:
+            loader = PyPDFLoader(pdf_path)
+            docs = loader.load()
+            for doc in docs: doc.metadata["source"] = os.path.basename(pdf_path)
+            all_docs.extend(docs)
+        except: pass
+    if not all_docs: return None, []
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    splits = text_splitter.split_documents(all_docs)
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    vectorstore = FAISS.from_documents(splits, embeddings)
+    return vectorstore.as_retriever(), [os.path.basename(f) for f in pdf_files]
+
+# ═══════════════════════════════════════════════════════════════
+# INICIALIZACIÓN
+# ═══════════════════════════════════════════════════════════════
+
+if "initialized" not in st.session_state:
+    with st.empty():
+        init_messages = ["🦅 Desplegando alas...", "💛 Sincronizando valores josefinos...", "✅ Juventud 2.0 lista, Profe Adrián"]
+        for msg in init_messages:
+            st.markdown(f"<p style='font-family: Montserrat; color: #facc15; text-align: center; font-size: 1.2rem;'>{msg}</p>", unsafe_allow_html=True)
+            time.sleep(0.5)
+            st.empty()
+    st.session_state.initialized = True
+
+if "retriever" not in st.session_state:
+    with st.spinner("Leyendo archivos de la comunidad..."):
+        retriever, loaded_files = load_knowledge_base()
+        st.session_state.retriever = retriever
+        st.session_state.loaded_files = loaded_files
+
+try:
+    client = OpenAI(
+        base_url="https://api.groq.com/openai/v1",
+        api_key=st.secrets["groq"]["api_key"]
+    )
+except Exception:
+    st.error("⚠️ Error de configuración: Revisa los 'Secrets' en Streamlit.")
+    st.stop()
+
+if "messages" not in st.session_state: st.session_state.messages = []
+
+# ═══════════════════════════════════════════════════════════════
+# SIDEBAR (Panel de Control Josefino)
+# ═══════════════════════════════════════════════════════════════
+
+with st.sidebar:
+    # Título del Sidebar
+    st.markdown("<h2 style='text-align: center; border:none;'>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
+    
+    # --- MICRÓFONO AQUÍ (ESTABLE) ---
+    # Al estar en el sidebar, no desaparece al enviar mensajes.
+    st.markdown("#### 🎙️ Comando de Voz")
+    audio_data = mic_recorder(
+        start_prompt="🎤 Iniciar Grabación",
+        stop_prompt="🛑 Detener",
+        just_once=False,
+        use_container_width=True,
+        key="mic_sidebar_stable"
+    )
+    
+    st.markdown("---")
+    
+    # Configuración
+    st.markdown("#### ⚙️ Configuración")
+    voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
+
+    st.markdown("---")
+    
+    # Archivos
+    st.markdown("#### 📚 Archivos de la Comunidad")
+    if st.session_state.get("loaded_files"):
+        st.success("🟢 Repositorio Conectado")
+        with st.expander("Ver archivos cargados"):
+            for f in st.session_state.loaded_files: 
+                st.write(f"📄 {f}")
+    else:
+        st.warning("🔴 Repositorio Vacío")
+    
+    st.markdown("---")
+    
+    # Principios
+    st.markdown("#### 📜 Principios Rectores")
+    st.info("✨ Hacer siempre y en todo lo mejor.")
+    st.success("🚀 Adelante, siempre adelante.")
+    st.warning("🛠️ Estar siempre útilmente ocupados.")
+
+    # Créditos
+    st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# LÓGICA DE PROCESAMIENTO
+# ═══════════════════════════════════════════════════════════════
+
+def process_user_input(user_input):
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(user_input)
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
+    context_text = ""
+    if st.session_state.get("retriever"):
+        docs = st.session_state.retriever.invoke(user_input)
+        if docs:
+            context_text = "\n\n---\n\n".join([f"Fragmento de '{d.metadata.get('source', 'desconocido')}':\n{d.page_content}" for d in docs])
+
+    full_prompt_content = SYSTEM_PROMPT + f"\n\n## REGISTROS ACCEDIDOS:\n{context_text}" if context_text else SYSTEM_PROMPT + "\n\n(No se hallaron registros específicos)."
+
+    with st.chat_message("assistant", avatar="🦅"):
+        try:
+            formatted_messages = [{"role": "system", "content": full_prompt_content}] + st.session_state.messages
+            stream = client.chat.completions.create(model="llama-3.1-8b-instant", messages=formatted_messages, stream=True)
+            response = st.write_stream(stream)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            if voice_enabled: speak_text(response)
+        except Exception as e:
+            st.error(f"⚠️ Dificultad técnica: {str(e)}")
+
+# ═══════════════════════════════════════════════════════════════
+# CHAT PRINCIPAL (Interfaz Limpia)
+# ═══════════════════════════════════════════════════════════════
+
+# Encabezado Principal
+st.markdown("<div class='main-header'><h1>JUVENTUD 2.0</h1><div class='subtitle'>Tu Guía Josefina</div></div>", unsafe_allow_html=True)
+
+# Procesamiento de Audio (Si se usó el del sidebar)
+if audio_data:
+    audio_bytes = audio_data['bytes']
+    audio_format = audio_data['format']
+    # Usamos un placeholder para que no salte el error visualmente feo
+    with st.spinner("🔊 Procesando tu voz..."):
+        try:
+            audio_file = io.BytesIO(audio_bytes)
+            audio_file.name = f"audio.{audio_format}"
+            transcription = client.audio.transcriptions.create(
+                file=audio_file,
+                model="whisper-large-v3",
+                language="es"
+            )
+            transcribed_text = transcription.text
+            if transcribed_text:
+                st.toast(f"🎤 Escuché: {transcribed_text}", icon="✅")
+                process_user_input(transcribed_text)
+        except Exception as e:
+            st.error(f"⚠️ Error en audio: {str(e)}")
+
+# Historial de Chat
+for message in st.session_state.messages:
+    if message["role"] != "system":
+        avatar = "🦅" if message["role"] == "assistant" else "👤"
+        with st.chat_message(message["role"], avatar=avatar):
+            st.markdown(message["content"])
+
+# Input de Texto (Siempre al fondo)
+if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
+    process_user_input(prompt)
