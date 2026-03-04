@@ -22,7 +22,7 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': "Creado por el Profe Adrián para la comunidad Josefina"}
 )
 
-# CSS PARA TEMA JOSEFINO (VERDE Y AMARILLO)
+# CSS PARA TEMA JOSEFINO Y MICRÓFONO FLOTANTE FIJO
 css_juventud = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
@@ -35,8 +35,6 @@ header {visibility: hidden;}
 /* Fondo principal */
 .stApp {
     background: linear-gradient(135deg, #064e3b 0%, #1a1a1a 50%, #064e3b 100%);
-    max-width: 100%;
-    padding: 0;
 }
 
 .stApp::before {
@@ -94,10 +92,6 @@ h1 {
     font-family: 'Poppins', sans-serif !important;
 }
 
-[data-testid="stChatMessageContent"] p {
-    color: #ffffff !important;
-}
-
 /* Input */
 .stChatInput {
     border: 2px solid rgba(250, 204, 21, 0.6) !important;
@@ -128,14 +122,28 @@ h1 {
 .stAlert { background: rgba(6, 78, 59, 0.3) !important; color: #ffffff !important; border-left: 5px solid #facc15 !important; }
 .stInfo { background: rgba(6, 78, 59, 0.3) !important; color: #ffffff !important; }
 
-/* Micrófono flotante */
-.mic-container {
-    position: fixed;
-    bottom: 30px;
-    left: 15px;
-    z-index: 9999;
-    border-radius: 50%;
-    box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+/* --- CORRECCIÓN MÍCROFONO FLOTANTE PERMANENTE --- */
+/* Aplicamos estilo directo al contenedor del componente de micrófono */
+div[data-testid="stVerticalBlock"]:has(iframe[title="streamlit_mic_recorder.streamlit_mic_recorder"]) {
+    position: fixed !important;
+    bottom: 90px; /* Altura suficiente para no chocar con el chat_input */
+    left: 20px;
+    z-index: 99999 !important;
+    background: rgba(6, 78, 59, 0.9);
+    border-radius: 50% !important;
+    padding: 0px !important;
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.6);
+    border: 2px solid #facc15;
+}
+
+/* Ocultamos el label "streamlit_mic_recorder..." que a veces aparece */
+div[data-testid="stVerticalBlock"]:has(iframe[title="streamlit_mic_recorder.streamlit_mic_recorder"]) label {
+    display: none !important;
+}
+
+/* Ajuste del iframe interno */
+iframe[title="streamlit_mic_recorder.streamlit_mic_recorder"] {
+    border-radius: 50% !important;
 }
 
 .main-padding-fix {
@@ -318,19 +326,19 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 
-# --- 1. LÓGICA DE PROCESAMIENTO DE AUDIO (PRIMERO) ---
-audio_processed = False
+# --- 1. LÓGICA DE PROCESAMIENTO DE AUDIO ---
+# El botón de micrófono se renderiza aquí.
+# El CSS (arriba) se encarga de moverlo visualmente a la posición flotante fija.
+# Esto evita que "desaparezca" porque el componente siempre está en el DOM,
+# solo que visualmente movido con CSS.
 
-st.markdown('<div class="mic-container">', unsafe_allow_html=True)
 audio_data = mic_recorder(
-    start_prompt="🎤",
-    stop_prompt="🛑",
+    start_prompt="🎤 Iniciar grabación",
+    stop_prompt="🛑 Detener",
     just_once=False,
     use_container_width=False,
-    key="mic_mobile_floating",
-    format="webm"
+    key="mic_juventud_2_0_fixed"
 )
-st.markdown('</div>', unsafe_allow_html=True)
 
 if audio_data:
     audio_bytes = audio_data['bytes']
@@ -350,9 +358,8 @@ if audio_data:
             transcribed_text = transcription.text
 
             if transcribed_text:
-                st.info(f"🎤 Mensaje recibido: *{transcribed_text}*")
+                st.toast(f"🎤 Mensaje recibido: {transcribed_text}", icon="✅")
                 process_user_input(transcribed_text)
-                audio_processed = True
 
         except Exception as e:
             st.error(f"⚠️ Error en el audio: {str(e)}")
@@ -362,3 +369,4 @@ st.markdown('<div class="main-padding-fix"></div>', unsafe_allow_html=True)
 
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     process_user_input(prompt)
+```
