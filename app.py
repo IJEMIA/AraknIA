@@ -316,7 +316,7 @@ st.markdown(header_html, unsafe_allow_html=True)
 # VIDEO Y NAVEGACIÓN
 # ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='video-container'>", unsafe_allow_html=True)
-st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # Reemplaza con tu video
+st.video("https://youtube.com/shorts/9R1cIkiMkrU?si=GYli58gFeBO5wAZI") # Reemplaza con tu video
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("<div class='link-button-container'>", unsafe_allow_html=True)
