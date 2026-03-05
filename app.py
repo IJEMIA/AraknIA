@@ -28,41 +28,48 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': "Creado por el Profe Adrián para la comunidad Josefina"}
 )
 
-# CSS DINÁMICO Y MODERNO
+# ═══════════════════════════════════════════════════════════════
+# CSS PROFESIONAL Y DINÁMICO (VERDE Y ORO)
+# ═══════════════════════════════════════════════════════════════
 css_juventud = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&family=Inter:wght@300;400;500;600&display=swap');
 
+    /* OCULTAR ELEMENTOS STREAMLIT */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     [data-testid="stDecoration"] {display: none;}
     [data-testid="stToolbar"] {display: none;}
     
+    /* FONDO CON EFECTO DE PROFUNDIDAD */
     .stApp {
-        background: linear-gradient(135deg, #011a14 0%, #022c22 40%, #052e16 100%);
+        background: linear-gradient(135deg, #011a14 0%, #022c22 50%, #052e16 100%);
         color: #f0fdf4;
     }
     
+    /* Capa de brillo sutil */
     .stApp::before {
         content: '';
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
         background: 
-            radial-gradient(circle at 20% 30%, rgba(74, 222, 128, 0.08) 0%, transparent 40%),
-            radial-gradient(circle at 80% 70%, rgba(250, 204, 21, 0.06) 0%, transparent 40%);
+            radial-gradient(circle at 10% 20%, rgba(74, 222, 128, 0.1) 0%, transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(250, 204, 21, 0.08) 0%, transparent 40%);
         pointer-events: none;
         z-index: 0;
     }
 
+    /* CONTENEDOR PRINCIPAL ENCIMA */
     section[data-testid="stMain"] {
         position: relative;
         z-index: 1 !important;
     }
     
+    /* ═══ HEADER ANIMADO ═══ */
     .main-header {
         text-align: center;
-        padding: 2rem 1rem 1rem 1rem;
+        padding: 1.5rem 1rem 0.5rem 1rem;
         animation: fadeInDown 0.8s ease-out;
     }
     
@@ -74,7 +81,7 @@ css_juventud = """
     .main-title {
         font-family: 'Montserrat', sans-serif;
         font-weight: 900;
-        font-size: clamp(2.5rem, 8vw, 4rem);
+        font-size: clamp(2.2rem, 7vw, 3.5rem);
         background: linear-gradient(135deg, #4ade80 0%, #facc15 50%, #4ade80 100%);
         background-size: 200% auto;
         -webkit-background-clip: text;
@@ -82,6 +89,7 @@ css_juventud = """
         background-clip: text;
         letter-spacing: 2px;
         animation: shimmer 4s linear infinite;
+        margin-bottom: 0.25rem;
     }
     
     @keyframes shimmer {
@@ -92,41 +100,80 @@ css_juventud = """
     .subtitle {
         font-family: 'Inter', sans-serif;
         color: #a7f3d0;
-        font-size: clamp(0.875rem, 2vw, 1.1rem);
-        letter-spacing: 4px;
+        font-size: clamp(0.8rem, 2vw, 1rem);
+        letter-spacing: 3px;
         text-transform: uppercase;
-        margin-top: 0.5rem;
+        margin-top: 0;
     }
     
+    /* Águila Animada */
     .eagle-container {
         display: flex;
         justify-content: center;
-        margin-bottom: 1rem;
-        animation: eagleFloat 4s ease-in-out infinite;
+        margin-bottom: 0.5rem;
+        animation: eagleFloat 5s ease-in-out infinite;
+        filter: drop-shadow(0 10px 20px rgba(250, 204, 21, 0.3));
     }
     
     @keyframes eagleFloat {
-        0%, 100% { transform: translateY(0) rotate(-2deg); }
-        50% { transform: translateY(-10px) rotate(2deg); }
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-12px) scale(1.05); }
     }
 
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #022c22 0%, #011a14 100%) !important;
-        border-right: 1px solid rgba(250, 204, 21, 0.15);
+    /* ═══ VIDEO CONTAINER ═══ */
+    .video-container {
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+        margin: 1rem auto;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 2px solid rgba(250, 204, 21, 0.3);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        background: #000;
     }
-    
-    [data-testid="stSidebar"] h2 {
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 800 !important;
+
+    /* ═══ BOTONES DE REDIRECCIÓN (LINK BUTTONS) ═══ */
+    .link-button-container {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin: 1.5rem auto;
+        max-width: 800px;
+    }
+
+    div[data-testid="stLinkButton"] {
+        flex: 1 1 200px; /* Crecer y encoger, base 200px */
+        min-width: 180px;
+    }
+
+    div[data-testid="stLinkButton"] button {
+        background: linear-gradient(135deg, rgba(2, 44, 34, 0.8) 0%, rgba(5, 46, 22, 0.9) 100%);
         color: #facc15 !important;
-        text-align: center;
-    }
-    
-    [data-testid="stSidebar"] h3 {
-        color: #a7f3d0 !important;
+        border: 2px solid #facc15 !important;
+        border-radius: 16px !important;
+        padding: 0.8rem 1.5rem !important;
         font-family: 'Montserrat', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        transition: all 0.3s ease !important;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        backdrop-filter: blur(5px);
     }
 
+    div[data-testid="stLinkButton"] button:hover {
+        background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
+        color: #022c22 !important;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(250, 204, 21, 0.4);
+    }
+
+    /* ═══ CHAT BUBBLES ═══ */
     [data-testid="stChatMessage"] {
         background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.02) 100%);
         border: 1px solid rgba(74, 222, 128, 0.2);
@@ -147,6 +194,7 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
+    /* ═══ INPUT CHAT ═══ */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.3) !important;
         border-radius: 24px !important;
@@ -174,6 +222,18 @@ css_juventud = """
         border-radius: 50% !important;
     }
 
+    /* ═══ SIDEBAR ═══ */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #022c22 0%, #011a14 100%) !important;
+        border-right: 1px solid rgba(250, 204, 21, 0.15);
+    }
+    
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        font-family: 'Montserrat', sans-serif !important;
+        color: #facc15 !important;
+    }
+
+    /* ═══ OTROS ELEMENTOS ═══ */
     .stButton button, .st-key-mic_btn button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
@@ -189,7 +249,7 @@ css_juventud = """
         box-shadow: 0 10px 25px rgba(250, 204, 21, 0.3);
     }
 
-    .stAlert, [data-testid="stSuccess"], [data-testid="stInfo"], [data-testid="stWarning"] {
+    .stAlert {
         background: rgba(2, 44, 34, 0.8) !important;
         border-left: 4px solid #facc15 !important;
         border-radius: 12px !important;
@@ -216,22 +276,45 @@ css_juventud = """
 """
 st.markdown(css_juventud, unsafe_allow_html=True)
 
-# HEADER HTML
+# ═══════════════════════════════════════════════════════════════
+# HEADER CON ÁGUILA SVG MEJORADA
+# ═══════════════════════════════════════════════════════════════
 header_html = """
 <div class="main-header">
     <div class="eagle-container">
-        <svg viewBox="0 0 64 64" width="72" height="72" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Águila SVG detallada -->
+        <svg viewBox="0 0 100 100" width="90" height="90" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <linearGradient id="eagleGradient" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+                <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#4ade80"/>
-                    <stop offset="100%" stop-color="#facc15"/>
+                    <stop offset="100%" stop-color="#059669"/>
                 </linearGradient>
+                <linearGradient id="beakGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#facc15"/>
+                    <stop offset="100%" stop-color="#f59e0b"/>
+                </linearGradient>
+                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+                </filter>
             </defs>
-            <path d="M32 8L8 24L16 28L8 40L20 36L16 52L32 40L48 52L44 36L56 40L48 28L56 24L32 8Z" 
-                  fill="url(#eagleGradient)" stroke="#facc15" stroke-width="1.5"/>
-            <circle cx="26" cy="24" r="3" fill="#022c22"/>
-            <circle cx="38" cy="24" r="3" fill="#022c22"/>
-            <path d="M28 32L32 36L36 32" stroke="#022c22" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Alas -->
+            <path d="M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z" fill="url(#bodyGrad)" stroke="#facc15" stroke-width="1.5" filter="url(#shadow)">
+                <animate attributeName="d" dur="3s" repeatCount="indefinite" 
+                    values="M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z;
+                            M50 30 L15 50 L25 55 L10 65 L30 60 L20 80 L40 65 L35 85 L50 70 L65 85 L60 65 L80 80 L70 60 L90 65 L75 55 L85 50 L50 30Z;
+                            M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z"/>
+            </path>
+            <!-- Cuerpo -->
+            <path d="M50 35 Q35 50 50 70 Q65 50 50 35Z" fill="url(#bodyGrad"/>
+            <!-- Cabeza -->
+            <circle cx="50" cy="38" r="10" fill="#facc15"/>
+            <!-- Ojos -->
+            <circle cx="46" cy="36" r="2" fill="#022c22"/>
+            <circle cx="54" cy="36" r="2" fill="#022c22"/>
+            <circle cx="46.5" cy="35.5" r="0.5" fill="white"/>
+            <circle cx="54.5" cy="35.5" r="0.5" fill="white"/>
+            <!-- Pico -->
+            <path d="M48 40 L50 46 L52 40 Z" fill="#022c22"/>
         </svg>
     </div>
     <h1 class="main-title">JUVENTUD 2.0</h1>
@@ -240,7 +323,44 @@ header_html = """
 """
 st.markdown(header_html, unsafe_allow_html=True)
 
+# ═══════════════════════════════════════════════════════════════
+# VIDEO DE YOUTUBE EN PORTADA
+# ═══════════════════════════════════════════════════════════════
+
+# Puedes cambiar este ID de video por el de tu institución
+# Formato: "https://www.youtube.com/watch?v=VIDEO_ID"
+video_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ" # Placeholder
+
+# Mostrar video
+st.markdown("<div class='video-container'>", unsafe_allow_html=True)
+st.video(video_url)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# BOTONES DE REDIRECCIÓN
+# ═══════════════════════════════════════════════════════════════
+
+st.markdown("<div class='link-button-container'>", unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns([1, 1, 1])
+
+with col1:
+    st.link_button("Sitio Web IJEM", "https://www.edomex.gob.mx/ijuventud", use_container_width=True)
+
+with col2:
+    st.link_button("Redes Sociales", "https://www.facebook.com/IJEMex", use_container_width=True)
+
+with col3:
+    st.link_button("Contacto", "mailto:contacto@ijuventudem.gob.mx", use_container_width=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# Separador visual
+st.markdown("<hr style='border: 1px solid rgba(250, 204, 21, 0.2); margin: 2rem 0;'>", unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE API KEY
+# ═══════════════════════════════════════════════════════════════
 api_key = None
 # Intentar obtener la clave de los secretos
 if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
@@ -268,7 +388,9 @@ except Exception as e:
     st.error(f"Error al conectar con Groq: {e}")
     st.stop()
 
+# ═══════════════════════════════════════════════════════════════
 # FUNCIONES DE VOZ (TTS)
+# ═══════════════════════════════════════════════════════════════
 def speak_text(text):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
     js_code = f"""
@@ -282,7 +404,9 @@ def speak_text(text):
     """
     components.html(js_code, height=0)
 
+# ═══════════════════════════════════════════════════════════════
 # PERSONALIDAD
+# ═══════════════════════════════════════════════════════════════
 SYSTEM_PROMPT = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
 Tus principios:
@@ -292,7 +416,9 @@ Tus principios:
 Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
 """
 
+# ═══════════════════════════════════════════════════════════════
 # CARGA DE DOCUMENTOS
+# ═══════════════════════════════════════════════════════════════
 DOCS_FOLDER = "documentos"
 
 @st.cache_resource
@@ -336,7 +462,9 @@ def load_knowledge_base():
         st.error(f"Error procesando la base de conocimientos: {e}")
         return None, []
 
+# ═══════════════════════════════════════════════════════════════
 # INICIALIZACIÓN DE ESTADO
+# ═══════════════════════════════════════════════════════════════
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
@@ -345,7 +473,9 @@ if "retriever" not in st.session_state:
     st.session_state.retriever = retriever
     st.session_state.loaded_files = loaded_files
 
+# ═══════════════════════════════════════════════════════════════
 # SIDEBAR
+# ═══════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
     
@@ -359,7 +489,7 @@ with st.sidebar:
             use_container_width=True,
             key="mic_sidebar_stable"
         )
-    except Exception as e:
+    except Exception:
         st.error("Error al acceder al micrófono.")
         audio_data = None
     
@@ -399,7 +529,9 @@ with st.sidebar:
 
     st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
 
+# ═══════════════════════════════════════════════════════════════
 # LÓGICA DE PROCESAMIENTO
+# ═══════════════════════════════════════════════════════════════
 def process_user_input(user_input):
     st.session_state.messages.append({"role": "user", "content": user_input})
     
@@ -431,7 +563,10 @@ def process_user_input(user_input):
         except Exception as e:
             st.error(f"⚠️ Error: {str(e)}")
 
+# ═══════════════════════════════════════════════════════════════
 # LOOP PRINCIPAL
+# ═══════════════════════════════════════════════════════════════
+
 # Procesar audio si existe
 if 'audio_data' in locals() and audio_data:
     try:
