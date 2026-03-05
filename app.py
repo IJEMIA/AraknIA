@@ -1,13 +1,3 @@
-Aquí tienes tu código `app.py` completado y modificado. He añadido la funcionalidad para que puedas subir archivos **ZIP** desde el sidebar.
-
-**Los cambios principales que he realizado:**
-1.  **Importaciones nuevas**: Añadí `zipfile` y `tempfile` para manejar la descompresión.
-2.  **Función reutilizable**: Creé la función `create_retriever_from_paths` para no repetir código. Esta función toma rutas de archivos (ya sean de la carpeta local o de archivos temporales extraídos del ZIP) y crea la base de datos vectorial.
-3.  **Carga dinámica en Sidebar**: Agregué un `st.file_uploader` en el panel lateral. Cuando subes un ZIP, el sistema lo descomprime en una carpeta temporal, lee los PDFs de ahí y actualiza la memoria de la IA.
-
-Copia y pega este código en tu `app.py`:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import time
