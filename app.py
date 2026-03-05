@@ -29,7 +29,7 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# CSS PROFESIONAL Y DINÁMICO (VERDE Y ORO)
+# CSS PROFESIONAL Y DINÁMICO
 # ═══════════════════════════════════════════════════════════════
 css_juventud = """
 <style>
@@ -133,7 +133,7 @@ css_juventud = """
         background: #000;
     }
 
-    /* ═══ BOTONES DE REDIRECCIÓN (LINK BUTTONS) ═══ */
+    /* ═══ BOTONES DE REDIRECCIÓN ═══ */
     .link-button-container {
         display: flex;
         justify-content: center;
@@ -144,7 +144,7 @@ css_juventud = """
     }
 
     div[data-testid="stLinkButton"] {
-        flex: 1 1 200px; /* Crecer y encoger, base 200px */
+        flex: 1 1 200px;
         min-width: 180px;
     }
 
@@ -173,13 +173,55 @@ css_juventud = """
         box-shadow: 0 8px 25px rgba(250, 204, 21, 0.4);
     }
 
-    /* ═══ CHAT BUBBLES ═══ */
+    /* ═══ BOTÓN MICRÓFONO (ARRIBA) ═══ */
+    .mic-container-top {
+        display: flex;
+        justify-content: center;
+        margin: 1.5rem auto 1rem auto;
+    }
+    
+    /* Estilo específico para el botón del micrófono en el cuerpo principal */
+    .st-key-mic_main_btn button {
+        background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
+        color: #022c22 !important;
+        font-weight: 700 !important;
+        border-radius: 50px !important;
+        padding: 1rem 2rem !important;
+        font-size: 1.1rem !important;
+        box-shadow: 0 5px 20px rgba(250, 204, 21, 0.3);
+        transition: all 0.3s ease !important;
+    }
+
+    .st-key-mic_main_btn button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(250, 204, 21, 0.5);
+    }
+
+    /* ═══ CHAT CONTENEDOR FIJO (SCROLL INTERNO) ═══ */
+    /* Contenedor que envuelve el historial */
+    .fixed-chat-wrapper {
+        background: rgba(2, 44, 34, 0.4);
+        border: 1px solid rgba(250, 204, 21, 0.2);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    /* Estilo para el contenedor con altura fija de Streamlit */
+    .st-key-chat_container > div > div {
+        border: none !important;
+        background: transparent !important;
+    }
+
+    /* Burbujas de chat dentro de la caja fija */
     [data-testid="stChatMessage"] {
         background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.02) 100%);
         border: 1px solid rgba(74, 222, 128, 0.2);
         border-radius: 20px;
         padding: 1.25rem;
-        margin-bottom: 1.25rem;
+        margin-bottom: 1rem;
         backdrop-filter: blur(12px);
         animation: bubbleIn 0.4s ease-out;
     }
@@ -234,7 +276,7 @@ css_juventud = """
     }
 
     /* ═══ OTROS ELEMENTOS ═══ */
-    .stButton button, .st-key-mic_btn button {
+    .stButton button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
         font-family: 'Montserrat', sans-serif;
@@ -326,47 +368,46 @@ st.markdown(header_html, unsafe_allow_html=True)
 # ═══════════════════════════════════════════════════════════════
 # VIDEO DE YOUTUBE EN PORTADA
 # ═══════════════════════════════════════════════════════════════
-
-# Puedes cambiar este ID de video por el de tu institución
-# Formato: "https://www.youtube.com/watch?v=VIDEO_ID"
-video_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ" # Placeholder
-
-# Mostrar video
 st.markdown("<div class='video-container'>", unsafe_allow_html=True)
-st.video(video_url)
+# Reemplaza con tu URL de video real
+st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # BOTONES DE REDIRECCIÓN
 # ═══════════════════════════════════════════════════════════════
-
 st.markdown("<div class='link-button-container'>", unsafe_allow_html=True)
-
 col1, col2, col3 = st.columns([1, 1, 1])
-
 with col1:
     st.link_button("Sitio Web IJEM", "https://www.edomex.gob.mx/ijuventud", use_container_width=True)
-
 with col2:
     st.link_button("Redes Sociales", "https://www.facebook.com/IJEMex", use_container_width=True)
-
 with col3:
     st.link_button("Contacto", "mailto:contacto@ijuventudem.gob.mx", use_container_width=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
+# ═══════════════════════════════════════════════════════════════
+# BOTÓN DE MICRÓFONO EN LA PARTE SUPERIOR
+# ═══════════════════════════════════════════════════════════════
+st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
+audio_data = mic_recorder(
+    start_prompt="🎤 Iniciar Grabación de Voz",
+    stop_prompt="🛑 Detener Grabación",
+    just_once=False,
+    key="mic_main_btn"
+)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Separador visual
-st.markdown("<hr style='border: 1px solid rgba(250, 204, 21, 0.2); margin: 2rem 0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='border: 1px solid rgba(250, 204, 21, 0.2); margin: 1rem 0;'>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE API KEY
 # ═══════════════════════════════════════════════════════════════
 api_key = None
-# Intentar obtener la clave de los secretos
 if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
     api_key = st.secrets["groq"]["api_key"]
 
-# Si no hay clave, pedir al usuario
 if not api_key:
     with st.sidebar:
         st.markdown("### ⚠️ Configuración Inicial")
@@ -378,7 +419,6 @@ if not api_key:
             st.info("Obtén una gratis en: console.groq.com")
             st.stop()
 
-# Inicializar Cliente
 try:
     client = OpenAI(
         base_url="https://api.groq.com/openai/v1",
@@ -389,7 +429,7 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# FUNCIONES DE VOZ (TTS)
+# FUNCIONES DE VOZ Y PERSONALIDAD
 # ═══════════════════════════════════════════════════════════════
 def speak_text(text):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
@@ -404,9 +444,6 @@ def speak_text(text):
     """
     components.html(js_code, height=0)
 
-# ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD
-# ═══════════════════════════════════════════════════════════════
 SYSTEM_PROMPT = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
 Tus principios:
@@ -423,7 +460,6 @@ DOCS_FOLDER = "documentos"
 
 @st.cache_resource
 def load_knowledge_base():
-    """Carga inicial desde la carpeta 'documentos'"""
     if not os.path.exists(DOCS_FOLDER):
         os.makedirs(DOCS_FOLDER)
         return None, []
@@ -462,9 +498,7 @@ def load_knowledge_base():
         st.error(f"Error procesando la base de conocimientos: {e}")
         return None, []
 
-# ═══════════════════════════════════════════════════════════════
-# INICIALIZACIÓN DE ESTADO
-# ═══════════════════════════════════════════════════════════════
+# Inicialización de estado
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
@@ -474,34 +508,14 @@ if "retriever" not in st.session_state:
     st.session_state.loaded_files = loaded_files
 
 # ═══════════════════════════════════════════════════════════════
-# SIDEBAR
+# SIDEBAR (Solo Configuración)
 # ═══════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
-    
-    # MICRÓFONO
-    st.markdown("#### 🎙️ Comando de Voz")
-    try:
-        audio_data = mic_recorder(
-            start_prompt="🎤 Iniciar Grabación",
-            stop_prompt="🛑 Detener",
-            just_once=False,
-            use_container_width=True,
-            key="mic_sidebar_stable"
-        )
-    except Exception:
-        st.error("Error al acceder al micrófono.")
-        audio_data = None
-    
-    st.markdown("---")
-    
-    # CONFIG
     st.markdown("#### ⚙️ Configuración")
     voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
-
     st.markdown("---")
     
-    # CARGADOR ZIP
     st.markdown("#### 📦 Cargar PDFs")
     uploaded_zip = st.file_uploader("Sube un ZIP con PDFs", type="zip", key="zip_uploader")
     
@@ -512,7 +526,6 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # ARCHIVOS
     st.markdown("#### 📚 Archivos")
     if st.session_state.get("loaded_files"):
         st.success(f"🟢 {len(st.session_state.loaded_files)} Activos")
@@ -521,7 +534,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # PRINCIPIOS
     st.markdown("#### 📜 Principios")
     st.markdown('<div class="principle-card"><p style="color: #4ade80;">✨ Hacer lo mejor</p></div>', unsafe_allow_html=True)
     st.markdown('<div class="principle-card"><p style="color: #facc15;">🚀 Siempre adelante</p></div>', unsafe_allow_html=True)
@@ -535,8 +547,7 @@ with st.sidebar:
 def process_user_input(user_input):
     st.session_state.messages.append({"role": "user", "content": user_input})
     
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(user_input)
+    # No mostramos el mensaje aquí, se mostrará en el historial dentro del contenedor fijo
 
     context_text = ""
     if st.session_state.get("retriever"):
@@ -548,27 +559,23 @@ def process_user_input(user_input):
     if context_text:
         full_prompt += f"\n\nContexto:\n{context_text}"
 
-    with st.chat_message("assistant", avatar="🦅"):
-        try:
-            formatted_messages = [{"role": "system", "content": full_prompt}] + st.session_state.messages
-            stream = client.chat.completions.create(
-                model="llama-3.1-8b-instant", 
-                messages=formatted_messages, 
-                stream=True
-            )
-            response = st.write_stream(stream)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            if voice_enabled: 
-                speak_text(response)
-        except Exception as e:
-            st.error(f"⚠️ Error: {str(e)}")
+    # Usamos un placeholder para escribir la respuesta en el contenedor fijo
+    # Pero primero necesitamos forzar la actualización del UI para que aparezca el mensaje del usuario
+    # Así que usamos el patrón estándar de chat de Streamlit
+    
+    # Añadimos mensaje vacío para el asistente
+    st.session_state.messages.append({"role": "assistant", "content": ""})
+    
+    # Forzamos re-run para actualizar la UI con el mensaje del usuario y el placeholder del asistente
+    # Nota: En Streamlit puro, la transmisión (streaming) requiere una estructura específica.
+    # Para mantener la caja fija, renderizaremos todo el historial en el paso siguiente.
 
 # ═══════════════════════════════════════════════════════════════
-# LOOP PRINCIPAL
+# CAJA DE CHAT FIJA (Renderizado Principal)
 # ═══════════════════════════════════════════════════════════════
 
 # Procesar audio si existe
-if 'audio_data' in locals() and audio_data:
+if audio_data:
     try:
         audio_bytes = audio_data['bytes']
         audio_file = io.BytesIO(audio_bytes)
@@ -581,17 +588,75 @@ if 'audio_data' in locals() and audio_data:
         )
         if transcription.text:
             st.toast(f"🎤 Escuché: {transcription.text}")
-            process_user_input(transcription.text)
+            # Añadimos al historial y procesamos
+            st.session_state.messages.append({"role": "user", "content": transcription.text})
+            
+            # Generamos respuesta
+            context_text = ""
+            if st.session_state.get("retriever"):
+                docs = st.session_state.retriever.invoke(transcription.text)
+                if docs:
+                    context_text = "\n\n".join([d.page_content for d in docs])
+            
+            full_prompt = SYSTEM_PROMPT
+            if context_text:
+                full_prompt += f"\n\nContexto:\n{context_text}"
+                
+            formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+            
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant", 
+                messages=formatted_messages, 
+                stream=False
+            )
+            
+            ai_response = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": ai_response})
+            if voice_enabled: speak_text(ai_response)
+            
     except Exception as e:
         st.error(f"Error de audio: {e}")
 
-# Mostrar historial
-for message in st.session_state.messages:
-    if message["role"] != "system":
-        avatar = "🦅" if message["role"] == "assistant" else "👤"
-        with st.chat_message(message["role"], avatar=avatar):
-            st.markdown(message["content"])
-
-# Input de chat
+# Input de chat (abajo)
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
-    process_user_input(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # Generar respuesta inmediatamente
+    context_text = ""
+    if st.session_state.get("retriever"):
+        docs = st.session_state.retriever.invoke(prompt)
+        if docs:
+            context_text = "\n\n".join([d.page_content for d in docs])
+    
+    full_prompt = SYSTEM_PROMPT
+    if context_text:
+        full_prompt += f"\n\nContexto:\n{context_text}"
+        
+    formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+    
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant", 
+            messages=formatted_messages, 
+            stream=False
+        )
+        ai_response = response.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": ai_response})
+        if voice_enabled: speak_text(ai_response)
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+# Contenedor Fijo para el Historial
+# Se usa height=450 para fijar la altura y crear scroll interno
+st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
+chat_container = st.container(height=450, key="chat_container")
+
+with chat_container:
+    # Mostrar historial
+    for message in st.session_state.messages:
+        if message["role"] != "system":
+            avatar = "🦅" if message["role"] == "assistant" else "👤"
+            with st.chat_message(message["role"], avatar=avatar):
+                st.markdown(message["content"])
+
+st.markdown("</div>", unsafe_allow_html=True)
