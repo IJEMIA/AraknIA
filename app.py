@@ -16,10 +16,10 @@ try:
     from langchain_community.embeddings import HuggingFaceEmbeddings
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError:
-    st.error("Faltan librerías. Por favor instala: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
+    st.error("Faltan librerías. Instala con: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
     st.stop()
 
-# CONFIGURACIÓN DE PÁGINA (Debe ser lo primero)
+# CONFIGURACIÓN DE PÁGINA
 st.set_page_config(
     page_title="Juventud 2.0",
     page_icon="🦅",
@@ -28,25 +28,22 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': "Creado por el Profe Adrián para la comunidad Josefina"}
 )
 
-# CSS DINÁMICO Y MODERNO (CORREGIDO PARA VISIBILIDAD)
+# CSS DINÁMICO Y MODERNO
 css_juventud = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&family=Inter:wght@300;400;500;600&display=swap');
 
-    /* OCULTAR ELEMENTOS INNECESARIOS */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     [data-testid="stDecoration"] {display: none;}
     [data-testid="stToolbar"] {display: none;}
     
-    /* FONDO Y BODY */
     .stApp {
         background: linear-gradient(135deg, #011a14 0%, #022c22 40%, #052e16 100%);
         color: #f0fdf4;
     }
     
-    /* Capa de brillo superior (Z-Index bajo para no tapar contenido) */
     .stApp::before {
         content: '';
         position: fixed;
@@ -58,13 +55,11 @@ css_juventud = """
         z-index: 0;
     }
 
-    /* IMPORTANTE: Asegurar que el contenido principal esté encima */
     section[data-testid="stMain"] {
         position: relative;
         z-index: 1 !important;
     }
     
-    /* HEADER ANIMADO */
     .main-header {
         text-align: center;
         padding: 2rem 1rem 1rem 1rem;
@@ -115,7 +110,6 @@ css_juventud = """
         50% { transform: translateY(-10px) rotate(2deg); }
     }
 
-    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #022c22 0%, #011a14 100%) !important;
         border-right: 1px solid rgba(250, 204, 21, 0.15);
@@ -133,7 +127,6 @@ css_juventud = """
         font-family: 'Montserrat', sans-serif !important;
     }
 
-    /* CHAT BURBUJAS */
     [data-testid="stChatMessage"] {
         background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.02) 100%);
         border: 1px solid rgba(74, 222, 128, 0.2);
@@ -154,7 +147,6 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* INPUT DE CHAT */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.3) !important;
         border-radius: 24px !important;
@@ -182,7 +174,6 @@ css_juventud = """
         border-radius: 50% !important;
     }
 
-    /* BOTONES NORMALES */
     .stButton button, .st-key-mic_btn button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
@@ -198,7 +189,6 @@ css_juventud = """
         box-shadow: 0 10px 25px rgba(250, 204, 21, 0.3);
     }
 
-    /* ALERTAS */
     .stAlert, [data-testid="stSuccess"], [data-testid="stInfo"], [data-testid="stWarning"] {
         background: rgba(2, 44, 34, 0.8) !important;
         border-left: 4px solid #facc15 !important;
@@ -206,12 +196,10 @@ css_juventud = """
         color: #f0fdf4 !important;
     }
 
-    /* SCROLLBAR */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #022c22; }
     ::-webkit-scrollbar-thumb { background: #facc15; border-radius: 10px; }
     
-    /* PRINCIPIOS CARDS */
     .principle-card {
         background: rgba(5, 46, 22, 0.6);
         border: 1px solid rgba(250, 204, 21, 0.15);
@@ -228,10 +216,7 @@ css_juventud = """
 """
 st.markdown(css_juventud, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# HTML PARA EL HEADER
-# ═══════════════════════════════════════════════════════════════
-
+# HEADER HTML
 header_html = """
 <div class="main-header">
     <div class="eagle-container">
@@ -255,22 +240,17 @@ header_html = """
 """
 st.markdown(header_html, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE API KEY (MANEJO SEGURO)
-# ═══════════════════════════════════════════════════════════════
-
-# Intentar cargar desde secrets
+# CONFIGURACIÓN DE API KEY
 api_key = None
-try:
+# Intentar obtener la clave de los secretos
+if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
     api_key = st.secrets["groq"]["api_key"]
-except:
-    pass # Si falla, mostraremos input en el sidebar
 
-# Si no hay secret, pedir en sidebar
+# Si no hay clave, pedir al usuario
 if not api_key:
     with st.sidebar:
         st.markdown("### ⚠️ Configuración Inicial")
-        api_key_input = st.text_input("Ingresa tu API Key de Groq", type="password")
+        api_key_input = st.text_input("Ingresa tu API Key de Groq", type="password", key="api_key_input_widget")
         if api_key_input:
             api_key = api_key_input
         else:
@@ -285,3 +265,198 @@ try:
         api_key=api_key
     )
 except Exception as e:
+    st.error(f"Error al conectar con Groq: {e}")
+    st.stop()
+
+# FUNCIONES DE VOZ (TTS)
+def speak_text(text):
+    text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
+    js_code = f"""
+    <script>
+        var utterance = new SpeechSynthesisUtterance("{text_clean}");
+        utterance.lang = 'es-MX'; 
+        utterance.rate = 0.95;    
+        utterance.pitch = 1.0;   
+        window.speechSynthesis.speak(utterance);
+    </script>
+    """
+    components.html(js_code, height=0)
+
+# PERSONALIDAD
+SYSTEM_PROMPT = """
+Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
+Tus principios:
+1. "Hacer siempre y en todo lo mejor".
+2. "Adelante, siempre adelante".
+3. "Estar siempre útilmente ocupados".
+Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
+"""
+
+# CARGA DE DOCUMENTOS
+DOCS_FOLDER = "documentos"
+
+@st.cache_resource
+def load_knowledge_base():
+    """Carga inicial desde la carpeta 'documentos'"""
+    if not os.path.exists(DOCS_FOLDER):
+        os.makedirs(DOCS_FOLDER)
+        return None, []
+        
+    pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
+    if not pdf_files: 
+        return None, []
+    
+    all_docs = []
+    valid_files = []
+    
+    try:
+        for pdf_path in pdf_files:
+            try:
+                loader = PyPDFLoader(pdf_path)
+                docs = loader.load()
+                filename = os.path.basename(pdf_path)
+                for doc in docs: 
+                    doc.metadata["source"] = filename
+                all_docs.extend(docs)
+                valid_files.append(filename)
+            except Exception as e:
+                print(f"Error leyendo archivo {pdf_path}: {e}")
+                
+        if not all_docs: 
+            return None, []
+        
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splits = text_splitter.split_documents(all_docs)
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        vectorstore = FAISS.from_documents(splits, embeddings)
+        
+        return vectorstore.as_retriever(), valid_files
+
+    except Exception as e:
+        st.error(f"Error procesando la base de conocimientos: {e}")
+        return None, []
+
+# INICIALIZACIÓN DE ESTADO
+if "messages" not in st.session_state: 
+    st.session_state.messages = []
+
+if "retriever" not in st.session_state:
+    retriever, loaded_files = load_knowledge_base()
+    st.session_state.retriever = retriever
+    st.session_state.loaded_files = loaded_files
+
+# SIDEBAR
+with st.sidebar:
+    st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
+    
+    # MICRÓFONO
+    st.markdown("#### 🎙️ Comando de Voz")
+    try:
+        audio_data = mic_recorder(
+            start_prompt="🎤 Iniciar Grabación",
+            stop_prompt="🛑 Detener",
+            just_once=False,
+            use_container_width=True,
+            key="mic_sidebar_stable"
+        )
+    except Exception as e:
+        st.error("Error al acceder al micrófono.")
+        audio_data = None
+    
+    st.markdown("---")
+    
+    # CONFIG
+    st.markdown("#### ⚙️ Configuración")
+    voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
+
+    st.markdown("---")
+    
+    # CARGADOR ZIP
+    st.markdown("#### 📦 Cargar PDFs")
+    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs", type="zip", key="zip_uploader")
+    
+    if uploaded_zip:
+        if "processed_zip_name" not in st.session_state or st.session_state.processed_zip_name != uploaded_zip.name:
+            st.session_state.processed_zip_name = uploaded_zip.name
+            st.toast(f"Procesando {uploaded_zip.name}...")
+
+    st.markdown("---")
+    
+    # ARCHIVOS
+    st.markdown("#### 📚 Archivos")
+    if st.session_state.get("loaded_files"):
+        st.success(f"🟢 {len(st.session_state.loaded_files)} Activos")
+    else:
+        st.info("🔴 Repositorio Vacío")
+    
+    st.markdown("---")
+    
+    # PRINCIPIOS
+    st.markdown("#### 📜 Principios")
+    st.markdown('<div class="principle-card"><p style="color: #4ade80;">✨ Hacer lo mejor</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="principle-card"><p style="color: #facc15;">🚀 Siempre adelante</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="principle-card"><p style="color: #a7f3d0;">🛠️ Útilmente ocupados</p></div>', unsafe_allow_html=True)
+
+    st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
+
+# LÓGICA DE PROCESAMIENTO
+def process_user_input(user_input):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(user_input)
+
+    context_text = ""
+    if st.session_state.get("retriever"):
+        docs = st.session_state.retriever.invoke(user_input)
+        if docs:
+            context_text = "\n\n".join([d.page_content for d in docs])
+
+    full_prompt = SYSTEM_PROMPT
+    if context_text:
+        full_prompt += f"\n\nContexto:\n{context_text}"
+
+    with st.chat_message("assistant", avatar="🦅"):
+        try:
+            formatted_messages = [{"role": "system", "content": full_prompt}] + st.session_state.messages
+            stream = client.chat.completions.create(
+                model="llama-3.1-8b-instant", 
+                messages=formatted_messages, 
+                stream=True
+            )
+            response = st.write_stream(stream)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            if voice_enabled: 
+                speak_text(response)
+        except Exception as e:
+            st.error(f"⚠️ Error: {str(e)}")
+
+# LOOP PRINCIPAL
+# Procesar audio si existe
+if 'audio_data' in locals() and audio_data:
+    try:
+        audio_bytes = audio_data['bytes']
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = f"audio.{audio_data['format']}"
+        
+        transcription = client.audio.transcriptions.create(
+            file=audio_file,
+            model="whisper-large-v3",
+            language="es"
+        )
+        if transcription.text:
+            st.toast(f"🎤 Escuché: {transcription.text}")
+            process_user_input(transcription.text)
+    except Exception as e:
+        st.error(f"Error de audio: {e}")
+
+# Mostrar historial
+for message in st.session_state.messages:
+    if message["role"] != "system":
+        avatar = "🦅" if message["role"] == "assistant" else "👤"
+        with st.chat_message(message["role"], avatar=avatar):
+            st.markdown(message["content"])
+
+# Input de chat
+if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
+    process_user_input(prompt)
