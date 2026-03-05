@@ -102,20 +102,6 @@ css_juventud = """
         letter-spacing: 3px;
         text-transform: uppercase;
     }
-    
-    /* Águila */
-    .eagle-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 0.5rem;
-        animation: eagleFloat 5s ease-in-out infinite;
-        filter: drop-shadow(0 10px 20px rgba(250, 204, 21, 0.3));
-    }
-    
-    @keyframes eagleFloat {
-        0%, 100% { transform: translateY(0) scale(1); }
-        50% { transform: translateY(-12px) scale(1.05); }
-    }
 
     /* VIDEO CONTAINER */
     .video-container {
@@ -213,7 +199,7 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* INPUT CHAT */
+    /* INPUT CHAT - CONTRASTE MEJORADO */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.3) !important;
         border-radius: 24px !important;
@@ -221,11 +207,13 @@ css_juventud = """
     }
     
     [data-testid="stChatInput"] textarea {
-        color: #f0fdf4 !important;
+        color: #ffffff !important; /* Color blanco para máximo contraste */
+        font-weight: 500;
     }
     
     [data-testid="stChatInput"] textarea::placeholder {
-        color: #a7f3d0 !important;
+        color: #d1d5db !important; /* Placeholder más visible */
+        opacity: 1;
     }
 
     [data-testid="stChatInput"] button {
@@ -278,34 +266,10 @@ css_juventud = """
 st.markdown(css_juventud, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# HEADER CON ÁGUILA
+# HEADER SIN ICONO
 # ═══════════════════════════════════════════════════════════════
 header_html = """
 <div class="main-header">
-    <div class="eagle-container">
-        <svg viewBox="0 0 100 100" width="90" height="90" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#4ade80"/>
-                    <stop offset="100%" stop-color="#059669"/>
-                </linearGradient>
-                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
-                </filter>
-            </defs>
-            <path d="M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z" fill="url(#bodyGrad)" stroke="#facc15" stroke-width="1.5" filter="url(#shadow)">
-                <animate attributeName="d" dur="3s" repeatCount="indefinite" 
-                    values="M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z;
-                            M50 30 L15 50 L25 55 L10 65 L30 60 L20 80 L40 65 L35 85 L50 70 L65 85 L60 65 L80 80 L70 60 L90 65 L75 55 L85 50 L50 30Z;
-                            M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z"/>
-            </path>
-            <path d="M50 35 Q35 50 50 70 Q65 50 50 35Z" fill="url(#bodyGrad"/>
-            <circle cx="50" cy="38" r="10" fill="#facc15"/>
-            <circle cx="46" cy="36" r="2" fill="#022c22"/>
-            <circle cx="54" cy="36" r="2" fill="#022c22"/>
-            <path d="M48 40 L50 46 L52 40 Z" fill="#022c22"/>
-        </svg>
-    </div>
     <h1 class="main-title">JUVENTUD 2.0</h1>
     <p class="subtitle">Tu Guía Josefina</p>
 </div>
@@ -316,15 +280,16 @@ st.markdown(header_html, unsafe_allow_html=True)
 # VIDEO Y NAVEGACIÓN
 # ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='video-container'>", unsafe_allow_html=True)
-st.video("https://youtube.com/shorts/9R1cIkiMkrU?si=GYli58gFeBO5wAZI") # Reemplaza con tu video
+# URL convertida a formato estándar watch para mejor compatibilidad
+st.video("https://www.youtube.com/watch?v=9R1cIkiMkrU")
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("<div class='link-button-container'>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
-    st.link_button("Sitio Web IJEM", "https://www.edomex.gob.mx/ijuventud", use_container_width=True)
+    st.link_button("Sitio Web IJEM", "https://juventud.edu.mx/", use_container_width=True)
 with col2:
-    st.link_button("Redes Sociales", "https://www.facebook.com/IJEMex", use_container_width=True)
+    st.link_button("Redes Sociales", "https://www.facebook.com/InstitutoJuventudMX/?locale=es_LA", use_container_width=True)
 with col3:
     st.link_button("Contacto", "mailto:contacto@ijuventudem.gob.mx", use_container_width=True)
 st.markdown("</div>", unsafe_allow_html=True)
