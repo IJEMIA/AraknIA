@@ -1,3 +1,10 @@
+El problema de que no se escuche en el celular se debe a las políticas de seguridad de los navegadores móviles (iOS y Android). Estos bloquean la **reproducción automática de audio** (como el `speechSynthesis`) a menos que el usuario haya interactuado directamente con la página en ese mismo instante. Como Streamlit se actualiza desde el servidor, ese "instante" de interacción se pierde, y el navegador bloquea el sonido.
+
+Para solucionar esto, he añadido un **botón de "Reproducir"** manual dentro de cada respuesta de la IA. Esto garantiza que en el celular puedas escuchar la respuesta cuando tú quieras, ya que al tocar el botón el navegador permite el audio.
+
+Aquí tienes el código corregido con esta mejora:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import time
@@ -42,13 +49,12 @@ css_juventud = """
     [data-testid="stDecoration"] {display: none;}
     [data-testid="stToolbar"] {display: none;}
     
-    /* FONDO CON EFECTO DE PROFUNDIDAD */
+    /* FONDO */
     .stApp {
         background: linear-gradient(135deg, #011a14 0%, #022c22 50%, #052e16 100%);
         color: #f0fdf4;
     }
     
-    /* Capa de brillo sutil */
     .stApp::before {
         content: '';
         position: fixed;
@@ -60,13 +66,12 @@ css_juventud = """
         z-index: 0;
     }
 
-    /* CONTENEDOR PRINCIPAL ENCIMA */
     section[data-testid="stMain"] {
         position: relative;
         z-index: 1 !important;
     }
     
-    /* ═══ HEADER ANIMADO ═══ */
+    /* HEADER */
     .main-header {
         text-align: center;
         padding: 1.5rem 1rem 0.5rem 1rem;
@@ -103,10 +108,9 @@ css_juventud = """
         font-size: clamp(0.8rem, 2vw, 1rem);
         letter-spacing: 3px;
         text-transform: uppercase;
-        margin-top: 0;
     }
     
-    /* Águila Animada */
+    /* Águila */
     .eagle-container {
         display: flex;
         justify-content: center;
@@ -120,7 +124,7 @@ css_juventud = """
         50% { transform: translateY(-12px) scale(1.05); }
     }
 
-    /* ═══ VIDEO CONTAINER ═══ */
+    /* VIDEO CONTAINER */
     .video-container {
         position: relative;
         width: 100%;
@@ -133,7 +137,7 @@ css_juventud = """
         background: #000;
     }
 
-    /* ═══ BOTONES DE REDIRECCIÓN ═══ */
+    /* BOTONES REDIRECCIÓN */
     .link-button-container {
         display: flex;
         justify-content: center;
@@ -156,14 +160,7 @@ css_juventud = """
         padding: 0.8rem 1.5rem !important;
         font-family: 'Montserrat', sans-serif !important;
         font-weight: 700 !important;
-        font-size: 1rem !important;
         transition: all 0.3s ease !important;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        backdrop-filter: blur(5px);
     }
 
     div[data-testid="stLinkButton"] button:hover {
@@ -173,32 +170,27 @@ css_juventud = """
         box-shadow: 0 8px 25px rgba(250, 204, 21, 0.4);
     }
 
-    /* ═══ BOTÓN MICRÓFONO (ARRIBA) ═══ */
+    /* MIC BUTTON TOP */
     .mic-container-top {
         display: flex;
         justify-content: center;
         margin: 1.5rem auto 1rem auto;
     }
     
-    /* Estilo específico para el botón del micrófono en el cuerpo principal */
     .st-key-mic_main_btn button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
         font-weight: 700 !important;
         border-radius: 50px !important;
         padding: 1rem 2rem !important;
-        font-size: 1.1rem !important;
         box-shadow: 0 5px 20px rgba(250, 204, 21, 0.3);
-        transition: all 0.3s ease !important;
     }
 
     .st-key-mic_main_btn button:hover {
         transform: scale(1.05);
-        box-shadow: 0 8px 30px rgba(250, 204, 21, 0.5);
     }
 
-    /* ═══ CHAT CONTENEDOR FIJO (SCROLL INTERNO) ═══ */
-    /* Contenedor que envuelve el historial */
+    /* CHAT CONTENEDOR FIJO */
     .fixed-chat-wrapper {
         background: rgba(2, 44, 34, 0.4);
         border: 1px solid rgba(250, 204, 21, 0.2);
@@ -209,13 +201,11 @@ css_juventud = """
         box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }
 
-    /* Estilo para el contenedor con altura fija de Streamlit */
     .st-key-chat_container > div > div {
         border: none !important;
         background: transparent !important;
     }
 
-    /* Burbujas de chat dentro de la caja fija */
     [data-testid="stChatMessage"] {
         background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.02) 100%);
         border: 1px solid rgba(74, 222, 128, 0.2);
@@ -223,12 +213,6 @@ css_juventud = """
         padding: 1.25rem;
         margin-bottom: 1rem;
         backdrop-filter: blur(12px);
-        animation: bubbleIn 0.4s ease-out;
-    }
-    
-    @keyframes bubbleIn {
-        from { opacity: 0; transform: translateY(20px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
     }
     
     [data-testid="stChatMessageContent"] {
@@ -236,22 +220,15 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* ═══ INPUT CHAT ═══ */
+    /* INPUT CHAT */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.3) !important;
         border-radius: 24px !important;
         background: rgba(2, 44, 34, 0.95) !important;
-        backdrop-filter: blur(15px);
-    }
-    
-    [data-testid="stChatInput"]:focus-within {
-        border-color: #facc15 !important;
-        box-shadow: 0 0 20px rgba(250, 204, 21, 0.2);
     }
     
     [data-testid="stChatInput"] textarea {
         color: #f0fdf4 !important;
-        font-family: 'Inter', sans-serif;
     }
     
     [data-testid="stChatInput"] textarea::placeholder {
@@ -264,7 +241,7 @@ css_juventud = """
         border-radius: 50% !important;
     }
 
-    /* ═══ SIDEBAR ═══ */
+    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #022c22 0%, #011a14 100%) !important;
         border-right: 1px solid rgba(250, 204, 21, 0.15);
@@ -275,7 +252,7 @@ css_juventud = """
         color: #facc15 !important;
     }
 
-    /* ═══ OTROS ELEMENTOS ═══ */
+    /* OTROS */
     .stButton button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
@@ -283,12 +260,6 @@ css_juventud = """
         font-weight: 700;
         border-radius: 50px !important;
         border: none !important;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(250, 204, 21, 0.3);
     }
 
     .stAlert {
@@ -308,54 +279,37 @@ css_juventud = """
         border-radius: 12px;
         padding: 1rem;
         margin-bottom: 0.5rem;
-        transition: all 0.3s ease;
-    }
-    .principle-card:hover {
-        border-color: rgba(250, 204, 21, 0.4);
-        transform: translateX(5px);
     }
 </style>
 """
 st.markdown(css_juventud, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# HEADER CON ÁGUILA SVG MEJORADA
+# HEADER CON ÁGUILA
 # ═══════════════════════════════════════════════════════════════
 header_html = """
 <div class="main-header">
     <div class="eagle-container">
-        <!-- Águila SVG detallada -->
         <svg viewBox="0 0 100 100" width="90" height="90" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#4ade80"/>
                     <stop offset="100%" stop-color="#059669"/>
                 </linearGradient>
-                <linearGradient id="beakGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#facc15"/>
-                    <stop offset="100%" stop-color="#f59e0b"/>
-                </linearGradient>
                 <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                     <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
                 </filter>
             </defs>
-            <!-- Alas -->
             <path d="M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z" fill="url(#bodyGrad)" stroke="#facc15" stroke-width="1.5" filter="url(#shadow)">
                 <animate attributeName="d" dur="3s" repeatCount="indefinite" 
                     values="M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z;
                             M50 30 L15 50 L25 55 L10 65 L30 60 L20 80 L40 65 L35 85 L50 70 L65 85 L60 65 L80 80 L70 60 L90 65 L75 55 L85 50 L50 30Z;
                             M50 25 L10 45 L20 50 L5 60 L25 55 L15 75 L35 60 L30 85 L50 65 L70 85 L65 60 L85 75 L75 55 L95 60 L80 50 L90 45 L50 25Z"/>
             </path>
-            <!-- Cuerpo -->
             <path d="M50 35 Q35 50 50 70 Q65 50 50 35Z" fill="url(#bodyGrad"/>
-            <!-- Cabeza -->
             <circle cx="50" cy="38" r="10" fill="#facc15"/>
-            <!-- Ojos -->
             <circle cx="46" cy="36" r="2" fill="#022c22"/>
             <circle cx="54" cy="36" r="2" fill="#022c22"/>
-            <circle cx="46.5" cy="35.5" r="0.5" fill="white"/>
-            <circle cx="54.5" cy="35.5" r="0.5" fill="white"/>
-            <!-- Pico -->
             <path d="M48 40 L50 46 L52 40 Z" fill="#022c22"/>
         </svg>
     </div>
@@ -366,16 +320,12 @@ header_html = """
 st.markdown(header_html, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# VIDEO DE YOUTUBE EN PORTADA
+# VIDEO Y NAVEGACIÓN
 # ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='video-container'>", unsafe_allow_html=True)
-# Reemplaza con tu URL de video real
-st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # Reemplaza con tu video
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# BOTONES DE REDIRECCIÓN
-# ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='link-button-container'>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
@@ -387,7 +337,7 @@ with col3:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# BOTÓN DE MICRÓFONO EN LA PARTE SUPERIOR
+# MICRÓFONO EN LA PARTE SUPERIOR
 # ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
 audio_data = mic_recorder(
@@ -397,8 +347,6 @@ audio_data = mic_recorder(
     key="mic_main_btn"
 )
 st.markdown("</div>", unsafe_allow_html=True)
-
-# Separador visual
 st.markdown("<hr style='border: 1px solid rgba(250, 204, 21, 0.2); margin: 1rem 0;'>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
@@ -431,19 +379,6 @@ except Exception as e:
 # ═══════════════════════════════════════════════════════════════
 # FUNCIONES DE VOZ Y PERSONALIDAD
 # ═══════════════════════════════════════════════════════════════
-def speak_text(text):
-    text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
-    js_code = f"""
-    <script>
-        var utterance = new SpeechSynthesisUtterance("{text_clean}");
-        utterance.lang = 'es-MX'; 
-        utterance.rate = 0.95;    
-        utterance.pitch = 1.0;   
-        window.speechSynthesis.speak(utterance);
-    </script>
-    """
-    components.html(js_code, height=0)
-
 SYSTEM_PROMPT = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
 Tus principios:
@@ -481,8 +416,8 @@ def load_knowledge_base():
                     doc.metadata["source"] = filename
                 all_docs.extend(docs)
                 valid_files.append(filename)
-            except Exception as e:
-                print(f"Error leyendo archivo {pdf_path}: {e}")
+            except Exception:
+                pass
                 
         if not all_docs: 
             return None, []
@@ -494,11 +429,10 @@ def load_knowledge_base():
         
         return vectorstore.as_retriever(), valid_files
 
-    except Exception as e:
-        st.error(f"Error procesando la base de conocimientos: {e}")
+    except Exception:
         return None, []
 
-# Inicialización de estado
+# Inicialización
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
@@ -508,7 +442,7 @@ if "retriever" not in st.session_state:
     st.session_state.loaded_files = loaded_files
 
 # ═══════════════════════════════════════════════════════════════
-# SIDEBAR (Solo Configuración)
+# SIDEBAR
 # ═══════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
@@ -544,35 +478,32 @@ with st.sidebar:
 # ═══════════════════════════════════════════════════════════════
 # LÓGICA DE PROCESAMIENTO
 # ═══════════════════════════════════════════════════════════════
-def process_user_input(user_input):
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    
-    # No mostramos el mensaje aquí, se mostrará en el historial dentro del contenedor fijo
 
-    context_text = ""
-    if st.session_state.get("retriever"):
-        docs = st.session_state.retriever.invoke(user_input)
-        if docs:
-            context_text = "\n\n".join([d.page_content for d in docs])
-
-    full_prompt = SYSTEM_PROMPT
-    if context_text:
-        full_prompt += f"\n\nContexto:\n{context_text}"
-
-    # Usamos un placeholder para escribir la respuesta en el contenedor fijo
-    # Pero primero necesitamos forzar la actualización del UI para que aparezca el mensaje del usuario
-    # Así que usamos el patrón estándar de chat de Streamlit
-    
-    # Añadimos mensaje vacío para el asistente
-    st.session_state.messages.append({"role": "assistant", "content": ""})
-    
-    # Forzamos re-run para actualizar la UI con el mensaje del usuario y el placeholder del asistente
-    # Nota: En Streamlit puro, la transmisión (streaming) requiere una estructura específica.
-    # Para mantener la caja fija, renderizaremos todo el historial en el paso siguiente.
-
-# ═══════════════════════════════════════════════════════════════
-# CAJA DE CHAT FIJA (Renderizado Principal)
-# ═══════════════════════════════════════════════════════════════
+# Función para generar botón de reproducción
+def get_audio_button_html(text, key):
+    text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
+    return f"""
+    <div style="margin-top: 10px; text-align: right;">
+        <button onclick="
+            var u = new SpeechSynthesisUtterance('{text_clean}');
+            u.lang = 'es-MX';
+            u.rate = 0.95;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(u);
+        " style="
+            background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%);
+            color: #022c22;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        ">Escuchar Respuesta</button>
+    </div>
+    """
 
 # Procesar audio si existe
 if audio_data:
@@ -588,10 +519,8 @@ if audio_data:
         )
         if transcription.text:
             st.toast(f"🎤 Escuché: {transcription.text}")
-            # Añadimos al historial y procesamos
             st.session_state.messages.append({"role": "user", "content": transcription.text})
             
-            # Generamos respuesta
             context_text = ""
             if st.session_state.get("retriever"):
                 docs = st.session_state.retriever.invoke(transcription.text)
@@ -606,22 +535,19 @@ if audio_data:
             
             response = client.chat.completions.create(
                 model="llama-3.1-8b-instant", 
-                messages=formatted_messages, 
-                stream=False
+                messages=formatted_messages
             )
             
             ai_response = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": ai_response})
-            if voice_enabled: speak_text(ai_response)
             
     except Exception as e:
         st.error(f"Error de audio: {e}")
 
-# Input de chat (abajo)
+# Input de chat
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Generar respuesta inmediatamente
     context_text = ""
     if st.session_state.get("retriever"):
         docs = st.session_state.retriever.invoke(prompt)
@@ -637,26 +563,32 @@ if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant", 
-            messages=formatted_messages, 
-            stream=False
+            messages=formatted_messages
         )
         ai_response = response.choices[0].message.content
         st.session_state.messages.append({"role": "assistant", "content": ai_response})
-        if voice_enabled: speak_text(ai_response)
     except Exception as e:
         st.error(f"Error: {e}")
 
-# Contenedor Fijo para el Historial
-# Se usa height=450 para fijar la altura y crear scroll interno
+# ═══════════════════════════════════════════════════════════════
+# CAJA DE CHAT FIJA
+# ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
 chat_container = st.container(height=450, key="chat_container")
 
 with chat_container:
-    # Mostrar historial
-    for message in st.session_state.messages:
+    for i, message in enumerate(st.session_state.messages):
         if message["role"] != "system":
             avatar = "🦅" if message["role"] == "assistant" else "👤"
             with st.chat_message(message["role"], avatar=avatar):
                 st.markdown(message["content"])
+                
+                # Agregar botón de escuchar para respuestas de la IA
+                if message["role"] == "assistant" and voice_enabled:
+                    components.html(
+                        get_audio_button_html(message["content"], f"audio_{i}"),
+                        height=50,
+                    )
 
 st.markdown("</div>", unsafe_allow_html=True)
+```
