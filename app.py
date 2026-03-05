@@ -434,4 +434,4 @@ for message in st.session_state.messages:
 # Input de Texto (Siempre al fondo)
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     process_user_input(prompt)
-```
+
