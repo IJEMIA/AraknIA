@@ -1,10 +1,3 @@
-El problema de que no se escuche en el celular se debe a las políticas de seguridad de los navegadores móviles (iOS y Android). Estos bloquean la **reproducción automática de audio** (como el `speechSynthesis`) a menos que el usuario haya interactuado directamente con la página en ese mismo instante. Como Streamlit se actualiza desde el servidor, ese "instante" de interacción se pierde, y el navegador bloquea el sonido.
-
-Para solucionar esto, he añadido un **botón de "Reproducir"** manual dentro de cada respuesta de la IA. Esto garantiza que en el celular puedas escuchar la respuesta cuando tú quieras, ya que al tocar el botón el navegador permite el audio.
-
-Aquí tienes el código corregido con esta mejora:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import time
@@ -591,4 +584,3 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
-```
