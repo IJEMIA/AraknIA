@@ -660,4 +660,3 @@ with tab_img:
         except Exception:
             pass
         st.markdown("</div>", unsafe_allow_html=True)
-```
