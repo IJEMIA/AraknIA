@@ -6,9 +6,7 @@ import streamlit.components.v1 as components
 from streamlit_mic_recorder import mic_recorder
 import io
 import zipfile
-import urllib.parse
-import requests  # Essential for downloading the image correctly
-import time
+import requests  # Necesario para conectar con Hugging Face
 
 # IMPORTACIONES PARA LANGCHAIN
 try:
@@ -266,11 +264,15 @@ with col3:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE API KEY
+# CONFIGURACIÓN DE API KEYS
 # ═══════════════════════════════════════════════════════════════
 api_key = None
 if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
     api_key = st.secrets["groq"]["api_key"]
+
+hf_token = None
+if "huggingface" in st.secrets and "token" in st.secrets["huggingface"]:
+    hf_token = st.secrets["huggingface"]["token"]
 
 # ═══════════════════════════════════════════════════════════════
 # SIDEBAR
@@ -278,16 +280,29 @@ if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
 with st.sidebar:
     st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
     
-    st.markdown("#### ⚙️ Configuración Chat")
+    # Configuración Chat
+    st.markdown("#### ⚙️ Chat (Groq)")
     if not api_key:
         api_key_input = st.text_input("API Key de Groq", type="password", key="api_key_input_groq")
         if api_key_input:
             api_key = api_key_input
         else:
-            st.warning("Necesitas API Key de Groq para el chat.")
-            st.info("Obtén una en: console.groq.com")
-    
-    voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
+            st.warning("Necesitas API Key de Groq.")
+    else:
+        st.success("Configurado ✅")
+
+    # Configuración Imágenes
+    st.markdown("#### 🎨 Imágenes (Hugging Face)")
+    if not hf_token:
+        hf_token_input = st.text_input("Token de HF", type="password", key="api_key_input_hf", help="Obtén uno gratis en huggingface.co -> Settings -> Access Tokens")
+        if hf_token_input:
+            hf_token = hf_token_input
+        else:
+            st.info("Gratis en huggingface.co")
+    else:
+        st.success("Configurado ✅")
+
+    voice_enabled = st.checkbox("Activar voz", value=True)
     st.markdown("---")
 
     st.markdown("#### 📦 Cargar PDFs")
@@ -299,7 +314,6 @@ with st.sidebar:
             st.toast(f"Procesando {uploaded_zip.name}...")
 
     st.markdown("---")
-
     st.markdown("#### 📚 Archivos")
     if st.session_state.get("loaded_files"):
         st.success(f"🟢 {len(st.session_state.loaded_files)} Activos")
@@ -307,28 +321,29 @@ with st.sidebar:
         st.info("🔴 Repositorio Vacío")
 
     st.markdown("---")
-
     st.markdown("#### 📜 Principios")
     st.markdown('<div class="principle-card"><p style="color: #4ade80;">✨ Hacer lo mejor</p></div>', unsafe_allow_html=True)
     st.markdown('<div class="principle-card"><p style="color: #facc15;">🚀 Siempre adelante</p></div>', unsafe_allow_html=True)
     st.markdown('<div class="principle-card"><p style="color: #a7f3d0;">🛠️ Útilmente ocupados</p></div>', unsafe_allow_html=True)
-
     st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
 
+# Validación
 if not api_key:
-    st.stop()
+    st.warning("Por favor, ingresa tu API Key de Groq en el panel lateral para usar el chat.")
+    # No detenemos la app para permitir configurar imágenes primero
 
-try:
-    client = OpenAI(
-        base_url="https://api.groq.com/openai/v1",
-        api_key=api_key
-    )
-except Exception as e:
-    st.error(f"Error al conectar con Groq: {e}")
-    st.stop()
+# Inicialización de cliente Groq
+if api_key:
+    try:
+        client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=api_key
+        )
+    except Exception as e:
+        st.error(f"Error al conectar con Groq: {e}")
 
 # ═══════════════════════════════════════════════════════════════
-# FUNCIONES DE VOZ Y PERSONALIDAD
+# LÓGICA CHAT Y DOCUMENTOS
 # ═══════════════════════════════════════════════════════════════
 SYSTEM_PROMPT = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
@@ -339,9 +354,6 @@ Tus principios:
 Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
 """
 
-# ═══════════════════════════════════════════════════════════════
-# CARGA DE DOCUMENTOS
-# ═══════════════════════════════════════════════════════════════
 DOCS_FOLDER = "documentos"
 
 @st.cache_resource
@@ -351,50 +363,35 @@ def load_knowledge_base():
         return None, []
 
     pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
-    if not pdf_files: 
-        return None, []
+    if not pdf_files: return None, []
 
     all_docs = []
     valid_files = []
-
     try:
         for pdf_path in pdf_files:
             try:
                 loader = PyPDFLoader(pdf_path)
                 docs = loader.load()
                 filename = os.path.basename(pdf_path)
-                for doc in docs: 
-                    doc.metadata["source"] = filename
+                for doc in docs: doc.metadata["source"] = filename
                 all_docs.extend(docs)
                 valid_files.append(filename)
-            except Exception:
-                pass
+            except: pass
 
-        if not all_docs: 
-            return None, []
-
+        if not all_docs: return None, []
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = text_splitter.split_documents(all_docs)
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(splits, embeddings)
-
         return vectorstore.as_retriever(), valid_files
-
-    except Exception:
+    except:
         return None, []
 
-# Inicialización de sesión
-if "messages" not in st.session_state: 
-    st.session_state.messages = []
-
+if "messages" not in st.session_state: st.session_state.messages = []
 if "retriever" not in st.session_state:
     retriever, loaded_files = load_knowledge_base()
     st.session_state.retriever = retriever
     st.session_state.loaded_files = loaded_files
-
-# ═══════════════════════════════════════════════════════════════
-# LÓGICA DE PROCESAMIENTO
-# ═══════════════════════════════════════════════════════════════
 
 def get_audio_button_html(text, key):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
@@ -422,160 +419,119 @@ def get_audio_button_html(text, key):
     """
 
 # ═══════════════════════════════════════════════════════════════
-# PESTAÑAS PRINCIPALES
+# PESTAÑAS
 # ═══════════════════════════════════════════════════════════════
 tab_chat, tab_img = st.tabs(["🦅 Chat Josefino", "🎨 Generador de Imágenes"])
 
-# --- LÓGICA CHAT ---
+# --- CHAT ---
 with tab_chat:
-    st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
-    audio_data = mic_recorder(
-        start_prompt="🎤 Iniciar Grabación de Voz",
-        stop_prompt="🛑 Detener Grabación",
-        just_once=False,
-        key="mic_main_btn"
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    if not api_key:
+        st.info("Ingresa tu API Key de Groq en el sidebar para comenzar.")
+    else:
+        st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
+        audio_data = mic_recorder(start_prompt="🎤 Iniciar Grabación", stop_prompt="🛑 Detener", just_once=False, key="mic_main_btn")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    if audio_data:
-        try:
-            audio_bytes = audio_data['bytes']
-            audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = f"audio.{audio_data['format']}"
+        if audio_data:
+            try:
+                audio_bytes = audio_data['bytes']
+                audio_file = io.BytesIO(audio_bytes)
+                audio_file.name = f"audio.{audio_data['format']}"
+                transcription = client.audio.transcriptions.create(file=audio_file, model="whisper-large-v3", language="es")
+                if transcription.text:
+                    st.toast(f"🎤 Escuché: {transcription.text}")
+                    st.session_state.messages.append({"role": "user", "content": transcription.text})
+                    # Lógica de respuesta (resumida)
+                    docs = st.session_state.retriever.invoke(transcription.text) if st.session_state.get("retriever") else []
+                    context_text = "\n\n".join([d.page_content for d in docs]) if docs else ""
+                    full_prompt = SYSTEM_PROMPT + (f"\n\nContexto:\n{context_text}" if context_text else "")
+                    formatted_messages = [{"role": "system", "content": full_prompt}] + st.session_state.messages
+                    response = client.chat.completions.create(model="llama-3.1-8b-instant", messages=formatted_messages)
+                    st.session_state.messages.append({"role": "assistant", "content": response.choices[0].message.content})
+            except Exception as e:
+                st.error(f"Error de audio: {e}")
 
-            transcription = client.audio.transcriptions.create(
-                file=audio_file,
-                model="whisper-large-v3",
-                language="es"
-            )
-            if transcription.text:
-                st.toast(f"🎤 Escuché: {transcription.text}")
-                st.session_state.messages.append({"role": "user", "content": transcription.text})
+        if prompt := st.chat_input("Escribe tu mensaje..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            # Lógica de respuesta
+            docs = st.session_state.retriever.invoke(prompt) if st.session_state.get("retriever") else []
+            context_text = "\n\n".join([d.page_content for d in docs]) if docs else ""
+            full_prompt = SYSTEM_PROMPT + (f"\n\nContexto:\n{context_text}" if context_text else "")
+            formatted_messages = [{"role": "system", "content": full_prompt}] + st.session_state.messages
+            try:
+                response = client.chat.completions.create(model="llama-3.1-8b-instant", messages=formatted_messages)
+                st.session_state.messages.append({"role": "assistant", "content": response.choices[0].message.content})
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-                context_text = ""
-                if st.session_state.get("retriever"):
-                    docs = st.session_state.retriever.invoke(transcription.text)
-                    if docs:
-                        context_text = "\n\n".join([d.page_content for d in docs])
+        # Contenedor Chat
+        st.markdown("<div class='fixed-chat-wrapper' style='background: rgba(2, 44, 34, 0.4); border-radius: 20px; padding: 1rem;'>", unsafe_allow_html=True)
+        chat_container = st.container(height=450, key="chat_container")
+        with chat_container:
+            for i, message in enumerate(st.session_state.messages):
+                if message["role"] != "system":
+                    avatar = "🦅" if message["role"] == "assistant" else "👤"
+                    with st.chat_message(message["role"], avatar=avatar):
+                        st.markdown(message["content"])
+                        if message["role"] == "assistant" and voice_enabled:
+                            components.html(get_audio_button_html(message["content"], f"audio_{i}"), height=50)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-                full_prompt = SYSTEM_PROMPT
-                if context_text:
-                    full_prompt += f"\n\nContexto:\n{context_text}"
-
-                formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-
-                response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant", 
-                    messages=formatted_messages
-                )
-
-                ai_response = response.choices[0].message.content
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
-
-        except Exception as e:
-            st.error(f"Error de audio: {e}")
-
-    if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        context_text = ""
-        if st.session_state.get("retriever"):
-            docs = st.session_state.retriever.invoke(prompt)
-            if docs:
-                context_text = "\n\n".join([d.page_content for d in docs])
-
-        full_prompt = SYSTEM_PROMPT
-        if context_text:
-            full_prompt += f"\n\nContexto:\n{context_text}"
-
-        formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-
-        try:
-            response = client.chat.completions.create(
-                model="llama-3.1-8b-instant", 
-                messages=formatted_messages
-            )
-            ai_response = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": ai_response})
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-    st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
-    chat_container = st.container(height=450, key="chat_container")
-
-    with chat_container:
-        for i, message in enumerate(st.session_state.messages):
-            if message["role"] != "system":
-                avatar = "🦅" if message["role"] == "assistant" else "👤"
-                with st.chat_message(message["role"], avatar=avatar):
-                    st.markdown(message["content"])
-                    if message["role"] == "assistant" and voice_enabled:
-                        components.html(
-                            get_audio_button_html(message["content"], f"audio_{i}"),
-                            height=50,
-                        )
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-# --- LÓGICA GENERADOR DE IMÁGENES (CORREGIDO) ---
+# --- IMÁGENES (Estable con Hugging Face) ---
 with tab_img:
     st.markdown("### 🎨 Taller de Creación Josefino")
-    st.info("💡 Genera imágenes gratuitas usando IA. El proceso puede tardar unos 10-20 segundos.")
-    
-    img_col1, img_col2 = st.columns([3, 1])
-    with img_col1:
-        img_prompt = st.text_area("Descripción de la imagen", placeholder="Ej: Un águila majestuosa volando sobre los volcanes de México al atardecer, estilo arte digital...", height=100)
-    
-    with img_col2:
-        style_option = st.selectbox("Estilo Visual", ["Realista", "Arte Digital", "Dibujo 3D", "Pintura al Óleo", "Cyberpunk"])
+    if not hf_token:
+        st.warning("⚠️ Para generar imágenes, necesitas un Token de Hugging Face (es gratis). ingrésalo en el panel lateral.")
+        st.markdown("**¿Cómo obtenerlo?**")
+        st.code("1. Entra a huggingface.co y regístrate.\n2. Ve a Settings -> Access Tokens.\n3. Crea un token tipo 'Read' y pégalo en el sidebar.", language="python")
+    else:
+        st.success("✅ Motor de imágenes activado (Stable Diffusion).")
         
-    if st.button("✨ Generar Imagen", use_container_width=True):
-        if not img_prompt:
-            st.warning("✏️ Por favor escribe una descripción.")
-        else:
-            # Estado de carga
-            placeholder = st.empty()
-            placeholder.info("🔄 Conectando con el servidor de imágenes...")
-            
-            try:
-                # 1. Construir URL (Añadimos nologo y width para mejor compatibilidad)
-                full_prompt = f"{img_prompt}, estilo {style_option}, 4k"
-                encoded_prompt = urllib.parse.quote(full_prompt)
-                # Añadimos parametros para evitar pantallas negras
-                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
-                
-                # 2. Descargar imagen simulando un navegador (User-Agent)
-                # Esto SOLUCIONA el error 1033
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
-                
-                placeholder.info("🎨 Pintando tu imagen... por favor espera.")
-                response = requests.get(image_url, headers=headers, timeout=60)
-                
-                if response.status_code == 200:
-                    # 3. Guardar imagen en bytes para descarga segura
-                    st.session_state['last_img_bytes'] = response.content
-                    st.session_state['last_img_prompt'] = img_prompt
-                    placeholder.success("✅ ¡Imagen creada con éxito!")
-                else:
-                    placeholder.error(f"Error del servidor: {response.status_code}")
-                    
-            except Exception as e:
-                placeholder.error(f"Ocurrió un error al generar: {e}")
+        img_col1, img_col2 = st.columns([3, 1])
+        with img_col1:
+            img_prompt = st.text_area("Descripción detallada de la imagen", placeholder="Ej: Un águila majestuosa sobre un volcán al atardecer, estilo realista...", height=100)
+        with img_col2:
+            style_option = st.selectbox("Estilo", ["Fotorrealista", "Arte Digital", "Pintura al Óleo", "Cyberpunk", "Anime"])
+            st.caption("Tarda aprox 10-20 seg")
 
-    # Mostrar imagen si existe en sesión
-    if 'last_img_bytes' in st.session_state:
-        st.markdown("<div class='generated-image-container'>", unsafe_allow_html=True)
-        st.image(st.session_state['last_img_bytes'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
-        
-        # Botón de descarga real (ya no link externo)
-        st.download_button(
-            label="📥 Descargar Imagen",
-            data=st.session_state['last_img_bytes'],
-            file_name="juventud_2_0_imagen.png",
-            mime="image/png",
-            use_container_width=True
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+        if st.button("✨ Generar Imagen", use_container_width=True):
+            if not img_prompt:
+                st.warning("Escribe una descripción.")
+            else:
+                with st.spinner("Conectando con Hugging Face y pintando..."):
+                    try:
+                        # Configuración API Hugging Face
+                        API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+                        headers = {"Authorization": f"Bearer {hf_token}"}
+                        
+                        # Prompt mejorado
+                        final_prompt = f"{img_prompt}, estilo {style_option}, 4k, alta calidad, detallado"
+                        payload = {"inputs": final_prompt}
+                        
+                        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+                        
+                        if response.status_code == 200:
+                            image_bytes = response.content
+                            st.session_state['last_img_bytes'] = image_bytes
+                            st.session_state['last_img_prompt'] = img_prompt
+                            st.toast("¡Imagen lista!")
+                        elif response.status_code == 503:
+                            st.error("El modelo se está calentando. Espera 1 minuto e intenta de nuevo.")
+                        else:
+                            st.error(f"Error {response.status_code}: {response.text}")
+                            
+                    except Exception as e:
+                        st.error(f"Error de conexión: {e}")
+
+        # Mostrar imagen
+        if 'last_img_bytes' in st.session_state:
+            st.markdown("<div class='generated-image-container'>", unsafe_allow_html=True)
+            st.image(st.session_state['last_img_bytes'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
+            st.download_button(
+                label="📥 Descargar Imagen",
+                data=st.session_state['last_img_bytes'],
+                file_name="juventud_2_0_imagen.png",
+                mime="image/png",
+                use_container_width=True
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
