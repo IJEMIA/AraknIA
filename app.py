@@ -1,3 +1,13 @@
+Aquí tienes el código completo actualizado. He añadido una nueva pestaña llamada **"Generador de Imágenes"** junto al chat.
+
+**Cambios importantes realizados:**
+1.  **Nueva Pestaña:** El chat ahora convive con el generador de imágenes en `st.tabs`.
+2.  **Configuración de API para Imágenes:** Dado que Groq no genera imágenes, he añadido en la barra lateral un campo para ingresar una **API Key de OpenAI** (necesaria para DALL-E). Si no la tienes, la función te avisará.
+3.  **Estilo Visual:** Se adaptó el CSS para que las pestañas y los botones de descarga de imágenes sigan la estética "Juventud 2.0" (verde y dorado).
+
+Copia y pega este código completo:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import time
@@ -8,6 +18,7 @@ from streamlit_mic_recorder import mic_recorder
 import io
 import zipfile
 import tempfile
+import requests  # Necesario para descargar la imagen generada
 
 # IMPORTACIONES PARA LANGCHAIN
 try:
@@ -29,7 +40,7 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# CSS PROFESIONAL Y DINÁMICO
+# CSS PROFESIONAL Y DINÁMICO (Actualizado con estilos para Tabs)
 # ═══════════════════════════════════════════════════════════════
 css_juventud = """
 <style>
@@ -207,12 +218,12 @@ css_juventud = """
     }
     
     [data-testid="stChatInput"] textarea {
-        color: #ffffff !important; /* Color blanco para máximo contraste */
+        color: #ffffff !important;
         font-weight: 500;
     }
     
     [data-testid="stChatInput"] textarea::placeholder {
-        color: #d1d5db !important; /* Placeholder más visible */
+        color: #d1d5db !important;
         opacity: 1;
     }
 
@@ -222,6 +233,25 @@ css_juventud = """
         border-radius: 50% !important;
     }
 
+    /* TABS ESTILOS */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(2, 44, 34, 0.6);
+        border-radius: 12px 12px 0 0;
+        color: #a7f3d0;
+        border: 1px solid rgba(250, 204, 21, 0.2);
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 600;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(180deg, #022c22 0%, #052e16 100%);
+        color: #facc15 !important;
+        border-bottom: 2px solid #facc15;
+    }
+    
     /* SIDEBAR */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #022c22 0%, #011a14 100%) !important;
@@ -261,12 +291,28 @@ css_juventud = """
         padding: 1rem;
         margin-bottom: 0.5rem;
     }
+    
+    /* CSS PARA IMAGEN GENERADA */
+    .generated-image-container {
+        background: rgba(2, 44, 34, 0.4);
+        border: 1px solid rgba(250, 204, 21, 0.3);
+        border-radius: 20px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-top: 1rem;
+    }
+    
+    .generated-image-container img {
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        max-width: 100%;
+    }
 </style>
 """
 st.markdown(css_juventud, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# HEADER SIN ICONO
+# HEADER
 # ═══════════════════════════════════════════════════════════════
 header_html = """
 <div class="main-header">
@@ -280,7 +326,6 @@ st.markdown(header_html, unsafe_allow_html=True)
 # VIDEO Y NAVEGACIÓN
 # ═══════════════════════════════════════════════════════════════
 st.markdown("<div class='video-container'>", unsafe_allow_html=True)
-# URL convertida a formato estándar watch para mejor compatibilidad
 st.video("https://www.youtube.com/watch?v=9R1cIkiMkrU")
 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -295,35 +340,73 @@ with col3:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# MICRÓFONO EN LA PARTE SUPERIOR
-# ═══════════════════════════════════════════════════════════════
-st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
-audio_data = mic_recorder(
-    start_prompt="🎤 Iniciar Grabación de Voz",
-    stop_prompt="🛑 Detener Grabación",
-    just_once=False,
-    key="mic_main_btn"
-)
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("<hr style='border: 1px solid rgba(250, 204, 21, 0.2); margin: 1rem 0;'>", unsafe_allow_html=True)
-
-# ═══════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE API KEY
 # ═══════════════════════════════════════════════════════════════
 api_key = None
 if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
     api_key = st.secrets["groq"]["api_key"]
 
-if not api_key:
-    with st.sidebar:
-        st.markdown("### ⚠️ Configuración Inicial")
-        api_key_input = st.text_input("Ingresa tu API Key de Groq", type="password", key="api_key_input_widget")
+# Variable para la API de OpenAI (Imágenes)
+openai_img_key = None
+if "openai" in st.secrets and "api_key" in st.secrets["openai"]:
+    openai_img_key = st.secrets["openai"]["api_key"]
+
+# ═══════════════════════════════════════════════════════════════
+# SIDEBAR
+# ═══════════════════════════════════════════════════════════════
+with st.sidebar:
+    st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
+    
+    # 1. Configuración Groq (Chat)
+    st.markdown("#### ⚙️ Configuración Chat")
+    if not api_key:
+        api_key_input = st.text_input("API Key de Groq", type="password", key="api_key_input_groq")
         if api_key_input:
             api_key = api_key_input
         else:
-            st.warning("Necesitas una API Key de Groq para continuar.")
-            st.info("Obtén una gratis en: console.groq.com")
-            st.stop()
+            st.warning("Necesitas API Key de Groq para el chat.")
+            st.info("Obtén una en: console.groq.com")
+    
+    # 2. Configuración OpenAI (Imágenes)
+    st.markdown("#### 🎨 Configuración Imágenes")
+    if not openai_img_key:
+        openai_img_input = st.text_input("API Key de OpenAI", type="password", key="api_key_input_openai_img", help="Necesaria para generar imágenes con DALL-E")
+        if openai_img_input:
+            openai_img_key = openai_img_input
+    else:
+        st.success("API OpenAI configurada ✨")
+
+    voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
+    st.markdown("---")
+
+    st.markdown("#### 📦 Cargar PDFs")
+    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs", type="zip", key="zip_uploader")
+
+    if uploaded_zip:
+        if "processed_zip_name" not in st.session_state or st.session_state.processed_zip_name != uploaded_zip.name:
+            st.session_state.processed_zip_name = uploaded_zip.name
+            st.toast(f"Procesando {uploaded_zip.name}...")
+
+    st.markdown("---")
+
+    st.markdown("#### 📚 Archivos")
+    if st.session_state.get("loaded_files"):
+        st.success(f"🟢 {len(st.session_state.loaded_files)} Activos")
+    else:
+        st.info("🔴 Repositorio Vacío")
+
+    st.markdown("---")
+
+    st.markdown("#### 📜 Principios")
+    st.markdown('<div class="principle-card"><p style="color: #4ade80;">✨ Hacer lo mejor</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="principle-card"><p style="color: #facc15;">🚀 Siempre adelante</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="principle-card"><p style="color: #a7f3d0;">🛠️ Útilmente ocupados</p></div>', unsafe_allow_html=True)
+
+    st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
+
+# Validación final para el chat
+if not api_key:
+    st.stop()
 
 try:
     client = OpenAI(
@@ -356,14 +439,14 @@ def load_knowledge_base():
     if not os.path.exists(DOCS_FOLDER):
         os.makedirs(DOCS_FOLDER)
         return None, []
-        
+
     pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
     if not pdf_files: 
         return None, []
-    
+
     all_docs = []
     valid_files = []
-    
+
     try:
         for pdf_path in pdf_files:
             try:
@@ -376,21 +459,21 @@ def load_knowledge_base():
                 valid_files.append(filename)
             except Exception:
                 pass
-                
+
         if not all_docs: 
             return None, []
-        
+
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = text_splitter.split_documents(all_docs)
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(splits, embeddings)
-        
+
         return vectorstore.as_retriever(), valid_files
 
     except Exception:
         return None, []
 
-# Inicialización
+# Inicialización de sesión
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
@@ -400,44 +483,9 @@ if "retriever" not in st.session_state:
     st.session_state.loaded_files = loaded_files
 
 # ═══════════════════════════════════════════════════════════════
-# SIDEBAR
-# ═══════════════════════════════════════════════════════════════
-with st.sidebar:
-    st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
-    st.markdown("#### ⚙️ Configuración")
-    voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
-    st.markdown("---")
-    
-    st.markdown("#### 📦 Cargar PDFs")
-    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs", type="zip", key="zip_uploader")
-    
-    if uploaded_zip:
-        if "processed_zip_name" not in st.session_state or st.session_state.processed_zip_name != uploaded_zip.name:
-            st.session_state.processed_zip_name = uploaded_zip.name
-            st.toast(f"Procesando {uploaded_zip.name}...")
-
-    st.markdown("---")
-    
-    st.markdown("#### 📚 Archivos")
-    if st.session_state.get("loaded_files"):
-        st.success(f"🟢 {len(st.session_state.loaded_files)} Activos")
-    else:
-        st.info("🔴 Repositorio Vacío")
-    
-    st.markdown("---")
-    
-    st.markdown("#### 📜 Principios")
-    st.markdown('<div class="principle-card"><p style="color: #4ade80;">✨ Hacer lo mejor</p></div>', unsafe_allow_html=True)
-    st.markdown('<div class="principle-card"><p style="color: #facc15;">🚀 Siempre adelante</p></div>', unsafe_allow_html=True)
-    st.markdown('<div class="principle-card"><p style="color: #a7f3d0;">🛠️ Útilmente ocupados</p></div>', unsafe_allow_html=True)
-
-    st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
-
-# ═══════════════════════════════════════════════════════════════
 # LÓGICA DE PROCESAMIENTO
 # ═══════════════════════════════════════════════════════════════
 
-# Función para generar botón de reproducción
 def get_audio_button_html(text, key):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
     return f"""
@@ -463,89 +511,163 @@ def get_audio_button_html(text, key):
     </div>
     """
 
-# Procesar audio si existe
-if audio_data:
-    try:
-        audio_bytes = audio_data['bytes']
-        audio_file = io.BytesIO(audio_bytes)
-        audio_file.name = f"audio.{audio_data['format']}"
-        
-        transcription = client.audio.transcriptions.create(
-            file=audio_file,
-            model="whisper-large-v3",
-            language="es"
-        )
-        if transcription.text:
-            st.toast(f"🎤 Escuché: {transcription.text}")
-            st.session_state.messages.append({"role": "user", "content": transcription.text})
-            
-            context_text = ""
-            if st.session_state.get("retriever"):
-                docs = st.session_state.retriever.invoke(transcription.text)
-                if docs:
-                    context_text = "\n\n".join([d.page_content for d in docs])
-            
-            full_prompt = SYSTEM_PROMPT
-            if context_text:
-                full_prompt += f"\n\nContexto:\n{context_text}"
-                
-            formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-            
+# ═══════════════════════════════════════════════════════════════
+# PESTAÑAS PRINCIPALES (CHAT vs IMÁGENES)
+# ═══════════════════════════════════════════════════════════════
+tab_chat, tab_img = st.tabs(["🦅 Chat Josefino", "🎨 Generador de Imágenes"])
+
+# --- LÓGICA CHAT ---
+with tab_chat:
+    st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
+    audio_data = mic_recorder(
+        start_prompt="🎤 Iniciar Grabación de Voz",
+        stop_prompt="🛑 Detener Grabación",
+        just_once=False,
+        key="mic_main_btn"
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Procesar audio
+    if audio_data:
+        try:
+            audio_bytes = audio_data['bytes']
+            audio_file = io.BytesIO(audio_bytes)
+            audio_file.name = f"audio.{audio_data['format']}"
+
+            transcription = client.audio.transcriptions.create(
+                file=audio_file,
+                model="whisper-large-v3",
+                language="es"
+            )
+            if transcription.text:
+                st.toast(f"🎤 Escuché: {transcription.text}")
+                st.session_state.messages.append({"role": "user", "content": transcription.text})
+
+                context_text = ""
+                if st.session_state.get("retriever"):
+                    docs = st.session_state.retriever.invoke(transcription.text)
+                    if docs:
+                        context_text = "\n\n".join([d.page_content for d in docs])
+
+                full_prompt = SYSTEM_PROMPT
+                if context_text:
+                    full_prompt += f"\n\nContexto:\n{context_text}"
+
+                formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+
+                response = client.chat.completions.create(
+                    model="llama-3.1-8b-instant", 
+                    messages=formatted_messages
+                )
+
+                ai_response = response.choices[0].message.content
+                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+
+        except Exception as e:
+            st.error(f"Error de audio: {e}")
+
+    # Input de chat dentro de la pestaña
+    if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        context_text = ""
+        if st.session_state.get("retriever"):
+            docs = st.session_state.retriever.invoke(prompt)
+            if docs:
+                context_text = "\n\n".join([d.page_content for d in docs])
+
+        full_prompt = SYSTEM_PROMPT
+        if context_text:
+            full_prompt += f"\n\nContexto:\n{context_text}"
+
+        formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+
+        try:
             response = client.chat.completions.create(
                 model="llama-3.1-8b-instant", 
                 messages=formatted_messages
             )
-            
             ai_response = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": ai_response})
-            
-    except Exception as e:
-        st.error(f"Error de audio: {e}")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-# Input de chat
-if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    
-    context_text = ""
-    if st.session_state.get("retriever"):
-        docs = st.session_state.retriever.invoke(prompt)
-        if docs:
-            context_text = "\n\n".join([d.page_content for d in docs])
-    
-    full_prompt = SYSTEM_PROMPT
-    if context_text:
-        full_prompt += f"\n\nContexto:\n{context_text}"
-        
-    formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-    
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
-            messages=formatted_messages
-        )
-        ai_response = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": ai_response})
-    except Exception as e:
-        st.error(f"Error: {e}")
+    # Contenedor de chat
+    st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
+    chat_container = st.container(height=450, key="chat_container")
 
-# ═══════════════════════════════════════════════════════════════
-# CAJA DE CHAT FIJA
-# ═══════════════════════════════════════════════════════════════
-st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
-chat_container = st.container(height=450, key="chat_container")
+    with chat_container:
+        for i, message in enumerate(st.session_state.messages):
+            if message["role"] != "system":
+                avatar = "🦅" if message["role"] == "assistant" else "👤"
+                with st.chat_message(message["role"], avatar=avatar):
+                    st.markdown(message["content"])
+                    if message["role"] == "assistant" and voice_enabled:
+                        components.html(
+                            get_audio_button_html(message["content"], f"audio_{i}"),
+                            height=50,
+                        )
 
-with chat_container:
-    for i, message in enumerate(st.session_state.messages):
-        if message["role"] != "system":
-            avatar = "🦅" if message["role"] == "assistant" else "👤"
-            with st.chat_message(message["role"], avatar=avatar):
-                st.markdown(message["content"])
-                
-                # Agregar botón de escuchar para respuestas de la IA
-                if message["role"] == "assistant" and voice_enabled:
-                    components.html(
-                        get_audio_button_html(message["content"], f"audio_{i}"),
-                        height=50,
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# --- LÓGICA GENERADOR DE IMÁGENES ---
+with tab_img:
+    st.markdown("### 🎨 Taller de Creación Josefino")
+    st.write("Describe la imagen que deseas crear. Sé específico con los detalles, estilos y colores.")
+    
+    img_col1, img_col2 = st.columns([3, 1])
+    with img_col1:
+        img_prompt = st.text_area("Descripción de la imagen", placeholder="Ej: Un águila majestuosa volando sobre los volcanes de México al atardecer, estilo arte digital...", height=100)
+    
+    with img_col2:
+        img_size = st.selectbox("Tamaño", ["1024x1024", "512x512", "1792x1024"])
+        img_quality = st.selectbox("Calidad", ["standard", "hd"]) if img_size != "512x512" else "standard"
+        img_style = st.selectbox("Estilo", ["vivid", "natural"])
+
+    if st.button("✨ Generar Imagen", use_container_width=True):
+        if not openai_img_key:
+            st.error("🚫 Necesitas ingresar una API Key de OpenAI en la barra lateral para generar imágenes.")
+        elif not img_prompt:
+            st.warning("✏️ Por favor escribe una descripción.")
+        else:
+            with st.spinner("Creando tu obra maestra..."):
+                try:
+                    # Cliente OpenAI temporal para imágenes (apunta a api.openai.com por defecto)
+                    img_client = OpenAI(api_key=openai_img_key)
+                    
+                    response_img = img_client.images.generate(
+                        model="dall-e-3",
+                        prompt=f"{img_prompt}. Estilo: {img_style}",
+                        size=img_size,
+                        quality=img_quality,
+                        n=1,
                     )
+                    
+                    image_url = response_img.data[0].url
+                    st.session_state['last_img_url'] = image_url
+                    st.session_state['last_img_prompt'] = img_prompt
+                    
+                except Exception as e:
+                    st.error(f"Error al crear la imagen: {e}")
 
-st.markdown("</div>", unsafe_allow_html=True)
+    # Mostrar imagen si existe en sesión
+    if 'last_img_url' in st.session_state:
+        st.markdown("<div class='generated-image-container'>", unsafe_allow_html=True)
+        st.image(st.session_state['last_img_url'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
+        
+        # Botón de descarga
+        try:
+            img_response = requests.get(st.session_state['last_img_url'])
+            if img_response.status_code == 200:
+                st.download_button(
+                    label="📥 Descargar Imagen",
+                    data=img_response.content,
+                    file_name="juventud_2_0_image.png",
+                    mime="image/png",
+                    use_container_width=True
+                )
+        except Exception:
+            pass
+        st.markdown("</div>", unsafe_allow_html=True)
+```
