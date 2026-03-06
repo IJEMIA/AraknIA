@@ -1,13 +1,3 @@
-Aquí tienes el código completo actualizado. He añadido una nueva pestaña llamada **"Generador de Imágenes"** junto al chat.
-
-**Cambios importantes realizados:**
-1.  **Nueva Pestaña:** El chat ahora convive con el generador de imágenes en `st.tabs`.
-2.  **Configuración de API para Imágenes:** Dado que Groq no genera imágenes, he añadido en la barra lateral un campo para ingresar una **API Key de OpenAI** (necesaria para DALL-E). Si no la tienes, la función te avisará.
-3.  **Estilo Visual:** Se adaptó el CSS para que las pestañas y los botones de descarga de imágenes sigan la estética "Juventud 2.0" (verde y dorado).
-
-Copia y pega este código completo:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import time
