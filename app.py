@@ -6,7 +6,9 @@ import streamlit.components.v1 as components
 from streamlit_mic_recorder import mic_recorder
 import io
 import zipfile
-import urllib.parse  # Necesario para codificar el prompt de la imagen
+import urllib.parse
+import requests  # Essential for downloading the image correctly
+import time
 
 # IMPORTACIONES PARA LANGCHAIN
 try:
@@ -164,63 +166,6 @@ css_juventud = """
         box-shadow: 0 5px 20px rgba(250, 204, 21, 0.3);
     }
 
-    .st-key-mic_main_btn button:hover {
-        transform: scale(1.05);
-    }
-
-    /* CHAT CONTENEDOR FIJO */
-    .fixed-chat-wrapper {
-        background: rgba(2, 44, 34, 0.4);
-        border: 1px solid rgba(250, 204, 21, 0.2);
-        border-radius: 20px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }
-
-    .st-key-chat_container > div > div {
-        border: none !important;
-        background: transparent !important;
-    }
-
-    [data-testid="stChatMessage"] {
-        background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.02) 100%);
-        border: 1px solid rgba(74, 222, 128, 0.2);
-        border-radius: 20px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        backdrop-filter: blur(12px);
-    }
-    
-    [data-testid="stChatMessageContent"] {
-        color: #f0fdf4 !important;
-        font-family: 'Inter', sans-serif;
-    }
-
-    /* INPUT CHAT */
-    [data-testid="stChatInput"] {
-        border: 2px solid rgba(250, 204, 21, 0.3) !important;
-        border-radius: 24px !important;
-        background: rgba(2, 44, 34, 0.95) !important;
-    }
-    
-    [data-testid="stChatInput"] textarea {
-        color: #ffffff !important;
-        font-weight: 500;
-    }
-    
-    [data-testid="stChatInput"] textarea::placeholder {
-        color: #d1d5db !important;
-        opacity: 1;
-    }
-
-    [data-testid="stChatInput"] button {
-        background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
-        color: #022c22 !important;
-        border-radius: 50% !important;
-    }
-
     /* TABS ESTILOS */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
@@ -239,7 +184,7 @@ css_juventud = """
         color: #facc15 !important;
         border-bottom: 2px solid #facc15;
     }
-    
+
     /* SIDEBAR */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #022c22 0%, #011a14 100%) !important;
@@ -251,7 +196,6 @@ css_juventud = """
         color: #facc15 !important;
     }
 
-    /* OTROS */
     .stButton button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
@@ -289,12 +233,6 @@ css_juventud = """
         text-align: center;
         margin-top: 1rem;
     }
-    
-    .generated-image-container img {
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        max-width: 100%;
-    }
 </style>
 """
 st.markdown(css_juventud, unsafe_allow_html=True)
@@ -328,7 +266,7 @@ with col3:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE API KEY (Solo Groq para Chat/Voz)
+# CONFIGURACIÓN DE API KEY
 # ═══════════════════════════════════════════════════════════════
 api_key = None
 if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
@@ -340,7 +278,6 @@ if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
 with st.sidebar:
     st.markdown("<h2>🦅 Panel Josefino</h2>", unsafe_allow_html=True)
     
-    # 1. Configuración Groq (Chat)
     st.markdown("#### ⚙️ Configuración Chat")
     if not api_key:
         api_key_input = st.text_input("API Key de Groq", type="password", key="api_key_input_groq")
@@ -378,7 +315,6 @@ with st.sidebar:
 
     st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#555;'>Diseñado por el Profe Adrián</p>", unsafe_allow_html=True)
 
-# Validación final para el chat
 if not api_key:
     st.stop()
 
@@ -486,7 +422,7 @@ def get_audio_button_html(text, key):
     """
 
 # ═══════════════════════════════════════════════════════════════
-# PESTAÑAS PRINCIPALES (CHAT vs IMÁGENES)
+# PESTAÑAS PRINCIPALES
 # ═══════════════════════════════════════════════════════════════
 tab_chat, tab_img = st.tabs(["🦅 Chat Josefino", "🎨 Generador de Imágenes"])
 
@@ -501,7 +437,6 @@ with tab_chat:
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Procesar audio
     if audio_data:
         try:
             audio_bytes = audio_data['bytes']
@@ -540,7 +475,6 @@ with tab_chat:
         except Exception as e:
             st.error(f"Error de audio: {e}")
 
-    # Input de chat dentro de la pestaña
     if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -566,7 +500,6 @@ with tab_chat:
         except Exception as e:
             st.error(f"Error: {e}")
 
-    # Contenedor de chat
     st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
     chat_container = st.container(height=450, key="chat_container")
 
@@ -585,10 +518,10 @@ with tab_chat:
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- LÓGICA GENERADOR DE IMÁGENES (GRATIS) ---
+# --- LÓGICA GENERADOR DE IMÁGENES (CORREGIDO) ---
 with tab_img:
     st.markdown("### 🎨 Taller de Creación Josefino")
-    st.info("💡 Genera imágenes gratuitas usando IA. No necesitas configurar nada extra.")
+    st.info("💡 Genera imágenes gratuitas usando IA. El proceso puede tardar unos 10-20 segundos.")
     
     img_col1, img_col2 = st.columns([3, 1])
     with img_col1:
@@ -597,34 +530,52 @@ with tab_img:
     with img_col2:
         style_option = st.selectbox("Estilo Visual", ["Realista", "Arte Digital", "Dibujo 3D", "Pintura al Óleo", "Cyberpunk"])
         
-    if st.button("✨ Generar Imagen Gratis", use_container_width=True):
+    if st.button("✨ Generar Imagen", use_container_width=True):
         if not img_prompt:
             st.warning("✏️ Por favor escribe una descripción.")
         else:
-            with st.spinner("Creando tu obra maestra (esto puede tardar unos segundos)..."):
-                try:
-                    # Construimos el prompt final
-                    full_prompt = f"{img_prompt}, estilo {style_option}, alta calidad, 4k"
-                    
-                    # Codificamos el prompt para la URL
-                    encoded_prompt = urllib.parse.quote(full_prompt)
-                    
-                    # URL de Pollinations.ai (Servicio Gratuito)
-                    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-                    
-                    # Guardamos en sesión para persistencia
-                    st.session_state['last_img_url'] = image_url
+            # Estado de carga
+            placeholder = st.empty()
+            placeholder.info("🔄 Conectando con el servidor de imágenes...")
+            
+            try:
+                # 1. Construir URL (Añadimos nologo y width para mejor compatibilidad)
+                full_prompt = f"{img_prompt}, estilo {style_option}, 4k"
+                encoded_prompt = urllib.parse.quote(full_prompt)
+                # Añadimos parametros para evitar pantallas negras
+                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
+                
+                # 2. Descargar imagen simulando un navegador (User-Agent)
+                # Esto SOLUCIONA el error 1033
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+                
+                placeholder.info("🎨 Pintando tu imagen... por favor espera.")
+                response = requests.get(image_url, headers=headers, timeout=60)
+                
+                if response.status_code == 200:
+                    # 3. Guardar imagen en bytes para descarga segura
+                    st.session_state['last_img_bytes'] = response.content
                     st.session_state['last_img_prompt'] = img_prompt
+                    placeholder.success("✅ ¡Imagen creada con éxito!")
+                else:
+                    placeholder.error(f"Error del servidor: {response.status_code}")
                     
-                except Exception as e:
-                    st.error(f"Error al crear la imagen: {e}")
+            except Exception as e:
+                placeholder.error(f"Ocurrió un error al generar: {e}")
 
-    # Mostrar imagen si existe
-    if 'last_img_url' in st.session_state:
+    # Mostrar imagen si existe en sesión
+    if 'last_img_bytes' in st.session_state:
         st.markdown("<div class='generated-image-container'>", unsafe_allow_html=True)
-        try:
-            st.image(st.session_state['last_img_url'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
-            st.link_button("🔗 Abrir imagen en tamaño completo (Descargar)", st.session_state['last_img_url'], use_container_width=True)
-        except Exception:
-            st.error("No se pudo cargar la imagen generada.")
+        st.image(st.session_state['last_img_bytes'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
+        
+        # Botón de descarga real (ya no link externo)
+        st.download_button(
+            label="📥 Descargar Imagen",
+            data=st.session_state['last_img_bytes'],
+            file_name="juventud_2_0_imagen.png",
+            mime="image/png",
+            use_container_width=True
+        )
         st.markdown("</div>", unsafe_allow_html=True)
