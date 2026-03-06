@@ -1,14 +1,12 @@
 import streamlit as st
 from openai import OpenAI
-import time
 import os
 import glob
 import streamlit.components.v1 as components
 from streamlit_mic_recorder import mic_recorder
 import io
 import zipfile
-import tempfile
-import requests  # Necesario para descargar la imagen generada
+import urllib.parse  # Necesario para codificar el prompt de la imagen
 
 # IMPORTACIONES PARA LANGCHAIN
 try:
@@ -30,7 +28,7 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# CSS PROFESIONAL Y DINÁMICO (Actualizado con estilos para Tabs)
+# CSS PROFESIONAL Y DINÁMICO
 # ═══════════════════════════════════════════════════════════════
 css_juventud = """
 <style>
@@ -200,7 +198,7 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* INPUT CHAT - CONTRASTE MEJORADO */
+    /* INPUT CHAT */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.3) !important;
         border-radius: 24px !important;
@@ -330,16 +328,11 @@ with col3:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE API KEY
+# CONFIGURACIÓN DE API KEY (Solo Groq para Chat/Voz)
 # ═══════════════════════════════════════════════════════════════
 api_key = None
 if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
     api_key = st.secrets["groq"]["api_key"]
-
-# Variable para la API de OpenAI (Imágenes)
-openai_img_key = None
-if "openai" in st.secrets and "api_key" in st.secrets["openai"]:
-    openai_img_key = st.secrets["openai"]["api_key"]
 
 # ═══════════════════════════════════════════════════════════════
 # SIDEBAR
@@ -357,15 +350,6 @@ with st.sidebar:
             st.warning("Necesitas API Key de Groq para el chat.")
             st.info("Obtén una en: console.groq.com")
     
-    # 2. Configuración OpenAI (Imágenes)
-    st.markdown("#### 🎨 Configuración Imágenes")
-    if not openai_img_key:
-        openai_img_input = st.text_input("API Key de OpenAI", type="password", key="api_key_input_openai_img", help="Necesaria para generar imágenes con DALL-E")
-        if openai_img_input:
-            openai_img_key = openai_img_input
-    else:
-        st.success("API OpenAI configurada ✨")
-
     voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
     st.markdown("---")
 
@@ -601,62 +585,46 @@ with tab_chat:
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- LÓGICA GENERADOR DE IMÁGENES ---
+# --- LÓGICA GENERADOR DE IMÁGENES (GRATIS) ---
 with tab_img:
     st.markdown("### 🎨 Taller de Creación Josefino")
-    st.write("Describe la imagen que deseas crear. Sé específico con los detalles, estilos y colores.")
+    st.info("💡 Genera imágenes gratuitas usando IA. No necesitas configurar nada extra.")
     
     img_col1, img_col2 = st.columns([3, 1])
     with img_col1:
         img_prompt = st.text_area("Descripción de la imagen", placeholder="Ej: Un águila majestuosa volando sobre los volcanes de México al atardecer, estilo arte digital...", height=100)
     
     with img_col2:
-        img_size = st.selectbox("Tamaño", ["1024x1024", "512x512", "1792x1024"])
-        img_quality = st.selectbox("Calidad", ["standard", "hd"]) if img_size != "512x512" else "standard"
-        img_style = st.selectbox("Estilo", ["vivid", "natural"])
-
-    if st.button("✨ Generar Imagen", use_container_width=True):
-        if not openai_img_key:
-            st.error("🚫 Necesitas ingresar una API Key de OpenAI en la barra lateral para generar imágenes.")
-        elif not img_prompt:
+        style_option = st.selectbox("Estilo Visual", ["Realista", "Arte Digital", "Dibujo 3D", "Pintura al Óleo", "Cyberpunk"])
+        
+    if st.button("✨ Generar Imagen Gratis", use_container_width=True):
+        if not img_prompt:
             st.warning("✏️ Por favor escribe una descripción.")
         else:
-            with st.spinner("Creando tu obra maestra..."):
+            with st.spinner("Creando tu obra maestra (esto puede tardar unos segundos)..."):
                 try:
-                    # Cliente OpenAI temporal para imágenes (apunta a api.openai.com por defecto)
-                    img_client = OpenAI(api_key=openai_img_key)
+                    # Construimos el prompt final
+                    full_prompt = f"{img_prompt}, estilo {style_option}, alta calidad, 4k"
                     
-                    response_img = img_client.images.generate(
-                        model="dall-e-3",
-                        prompt=f"{img_prompt}. Estilo: {img_style}",
-                        size=img_size,
-                        quality=img_quality,
-                        n=1,
-                    )
+                    # Codificamos el prompt para la URL
+                    encoded_prompt = urllib.parse.quote(full_prompt)
                     
-                    image_url = response_img.data[0].url
+                    # URL de Pollinations.ai (Servicio Gratuito)
+                    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+                    
+                    # Guardamos en sesión para persistencia
                     st.session_state['last_img_url'] = image_url
                     st.session_state['last_img_prompt'] = img_prompt
                     
                 except Exception as e:
                     st.error(f"Error al crear la imagen: {e}")
 
-    # Mostrar imagen si existe en sesión
+    # Mostrar imagen si existe
     if 'last_img_url' in st.session_state:
         st.markdown("<div class='generated-image-container'>", unsafe_allow_html=True)
-        st.image(st.session_state['last_img_url'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
-        
-        # Botón de descarga
         try:
-            img_response = requests.get(st.session_state['last_img_url'])
-            if img_response.status_code == 200:
-                st.download_button(
-                    label="📥 Descargar Imagen",
-                    data=img_response.content,
-                    file_name="juventud_2_0_image.png",
-                    mime="image/png",
-                    use_container_width=True
-                )
+            st.image(st.session_state['last_img_url'], caption=st.session_state.get('last_img_prompt', ''), use_column_width=True)
+            st.link_button("🔗 Abrir imagen en tamaño completo (Descargar)", st.session_state['last_img_url'], use_container_width=True)
         except Exception:
-            pass
+            st.error("No se pudo cargar la imagen generada.")
         st.markdown("</div>", unsafe_allow_html=True)
