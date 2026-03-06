@@ -6,3 +6,4 @@ faiss-cpu
 sentence-transformers
 pypdf
 streamlit-mic-recorder
+requests
