@@ -66,7 +66,6 @@ def load_knowledge_base():
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = text_splitter.split_documents(all_docs)
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        # Retornamos el vectorstore directamente para poder hacer búsquedas filtradas
         vectorstore = FAISS.from_documents(splits, embeddings)
         return vectorstore, valid_files
     except Exception as e:
@@ -431,7 +430,7 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y MODO PLANEACIÓN (FLUJO V4 - UNIDADES NUMERADAS)
+# PERSONALIDAD Y MODO PLANEACIÓN (FLUJO V5 - LECTURA ESTRICTA)
 # ═══════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT_BASE = """
@@ -441,14 +440,9 @@ Tus principios:
 2. "Adelante, siempre adelante".
 3. "Estar siempre útilmente ocupados".
 Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
-
-REGLAS ESTRICTAS DE CONOCIMIENTO:
-1. Responde EXCLUSIVAMENTE basándote en el contexto proporcionado de los documentos PDF.
-2. Si la respuesta no se encuentra en el contexto, indícalo amablemente.
-3. NUNCA inventes información que no esté en el texto.
 """
 
-# Generamos la lista de archivos actual para el prompt
+# Generamos la lista de archivos
 loaded_files_list_str = "No hay archivos cargados."
 if st.session_state.get("loaded_files"):
     loaded_files_list_str = "\n".join([f"{i+1}. {fname}" for i, fname in enumerate(st.session_state.loaded_files)])
@@ -460,28 +454,28 @@ Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
 {loaded_files_list_str}
 -----------------------------------------
 
-**REGLAS DE CONTENIDO ESTRICTAS:**
-1. Los contenidos **Conceptuales, Procedimentales y Actitudinales** deben extraerse del documento seleccionado.
-2. **FORMATO DE ENTREGA FINAL:** Basa tu estructura en el documento "Planeación" si está en el contexto.
+**REGLAS DE ORO (INQUEBRANTABLE):**
+1. **VERACIDAD ABSOLUTA**: Toda información (Unidades, Contenidos, Objetivos) debe provenir **EXCLUSIVAMENTE** del texto proporcionado en la sección "Contexto de documentos".
+2. **PROHIBIDO INVENTAR**: Si el contexto no muestra explícitamente el nombre de una unidad o contenido, responde: "No pude encontrar esa información específica en el archivo seleccionado". **JAMÁS** inventes nombres de unidades o contenidos.
+3. Si el usuario selecciona un archivo por número, tu prioridad es buscar en el contexto de ese archivo.
 
-**FLUJO DE INTERACCIÓN OBLIGATORIO:**
+**FLUJO DE INTERACCIÓN:**
 
 **PASO 1: ACTIVACIÓN**
 Si el usuario dice "vamos a planear":
-1. Muestra la lista de archivos de arriba.
+1. Muestra la lista de archivos.
 2. Pregunta: "¿Cuál es el **número** del programa a utilizar?"
 
-**PASO 2: EXTRACCIÓN Y LISTADO DE UNIDADES**
-Cuando el usuario responda con un número de archivo:
-1. Identifica el archivo (ej: si elige 1, busca el primer archivo de la lista).
-2. **USA EL CONTEXTO PROPORCIONADO** (que contendrá el contenido de ese archivo) para localizar las "Unidades", "Bloques" o "Temas".
-3. Responde con el nombre del archivo seleccionado.
-4. **LISTA LAS UNIDADES ENCONTRADAS** numerándolas (ej: 1. Unidad I: Introducción, 2. Unidad II: Desarrollo...).
+**PASO 2: LECTURA Y LISTADO DE UNIDADES**
+Cuando el usuario responda con un número:
+1. Identifica el nombre del archivo correspondiente.
+2. Analiza el **Contexto de documentos** provisto (que estará filtrado para ese archivo).
+3. Extrae **EXCLUSIVAMENTE** del contexto los nombres de las Unidades, Módulos o Bloques.
+4. Enumera las unidades encontradas (ej: 1. Unidad I: ..., 2. Unidad II: ...).
 5. Pregunta: "¿Qué **número** de unidad(es) vamos a planear?"
 
 **PASO 3: SESIONES**
-Cuando el usuario elija la unidad por número:
-1. Pregunta: "¿Cuántas **sesiones** en total necesita para esta planeación?"
+Pregunta: "¿Cuántas **sesiones** en total necesita para esta planeación?"
 
 **PASO 4: DIAS DE CLASE**
 Pregunta: "¿Qué **días de la semana** se imparten las clases?"
@@ -493,12 +487,10 @@ Pregunta: "¿Cuáles son los **criterios de evaluación** y cuántas sesiones de
 Pregunta: "Indica **fecha de inicio** y **fecha de término**. ¿Hay **días festivos** que debamos ignorar?"
 
 **PASO 7: BORRADOR (5 EJEMPLOS)**
-Con toda la información:
-1. Genera 5 sesiones de ejemplo usando los contenidos de la unidad elegida.
-2. Pregunta: "¿Requieres cambios antes de generar la planeación completa?"
+Genera 5 sesiones de ejemplo.
 
 **PASO 8: GENERACIÓN FINAL**
-Genera la planeación completa con el formato oficial encontrado en documentos.
+Genera la planeación completa.
 
 Mantén el tono "Josefino".
 """
@@ -513,7 +505,6 @@ if "planning_mode" not in st.session_state:
     st.session_state.planning_mode = False
 
 if "vectorstore" not in st.session_state:
-    # Cargamos el vectorstore directamente (no solo el retriever)
     vectorstore, loaded_files = load_knowledge_base()
     st.session_state.vectorstore = vectorstore
     st.session_state.loaded_files = loaded_files
@@ -547,21 +538,8 @@ def get_audio_button_html(text, key):
     </div>
     """
 
-# ═══════════════════════════════════════════════════════════════
-# INTERFAZ DE CHAT
-# ═══════════════════════════════════════════════════════════════
-st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
-audio_data = mic_recorder(
-    start_prompt="🎤 Iniciar Grabación de Voz",
-    stop_prompt="🛑 Detener Grabación",
-    just_once=False,
-    key="mic_main_btn"
-)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# Función auxiliar para detectar selección de archivo y hacer búsqueda filtrada
+# Función optimizada para leer el archivo correcto
 def get_context_for_planning(user_input, vectorstore, loaded_files):
-    # Verificamos si el input es un número que corresponde a un archivo
     selected_file_index = None
     if loaded_files:
         try:
@@ -572,24 +550,27 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
             pass
 
     if selected_file_index is not None:
-        # BÚSQUEDA DIRIGIDA: Solo en el archivo seleccionado
         target_filename = loaded_files[selected_file_index]
-        # Usamos similarity_search con filtro para obtener contenido de ese archivo
-        # Buscamos términos relacionados con la estructura (Unidades, Contenido, Bloques)
         try:
+            # CORRECCIÓN CLAVE: Aumentamos fetch_k para asegurar que encuentre el archivo correcto
+            # Buscamos 50 documentos candidatos y luego filtramos por el archivo
             docs = vectorstore.similarity_search(
-                query="Unidades Bloques Contenido Temario Estructura", 
-                k=15, 
+                query="Unidades Bloques Contenido Temario Estructura Títulos", 
+                k=30, # Devolver hasta 30 fragmentos del archivo correcto
+                fetch_k=100, # Buscar en los 100 más parecidos globales antes de filtrar
                 filter={"source": target_filename}
             )
-            return "\n\n---\n\n".join([f"Fragmento de {doc.metadata.get('source')}:\n{doc.page_content}" for doc in docs]), target_filename
+            if not docs:
+                return f"El archivo {target_filename} parece estar vacío o no se pudo leer su estructura.", target_filename
+            
+            context_text = "\n\n---\n\n".join([f"Fragmento de {doc.metadata.get('source')}:\n{doc.page_content}" for doc in docs])
+            return context_text, target_filename
         except Exception as e:
-            st.warning(f"Error en búsqueda filtrada: {e}")
-            return "", None
+            return f"Error al leer {target_filename}: {e}", target_filename
     else:
-        # BÚSQUEDA GENERAL (Retriever normal)
+        # Búsqueda general
         try:
-            retriever = vectorstore.as_retriever()
+            retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
             docs = retriever.invoke(user_input)
             return "\n\n---\n\n".join([f"Fuente: {doc.metadata.get('source', 'Desconocido')}\n{doc.page_content}" for doc in docs]), None
         except Exception as e:
@@ -618,7 +599,6 @@ if audio_data:
 
             current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
             
-            # Lógica de contexto mejorada
             context_text = ""
             if st.session_state.get("vectorstore"):
                 context_text, _ = get_context_for_planning(prompt, st.session_state.vectorstore, st.session_state.loaded_files)
@@ -651,7 +631,6 @@ if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
 
     context_text = ""
-    # Lógica de contexto mejorada
     if st.session_state.get("vectorstore"):
         context_text, _ = get_context_for_planning(prompt, st.session_state.vectorstore, st.session_state.loaded_files)
 
