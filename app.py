@@ -1,14 +1,3 @@
-Aquí tienes la versión mejorada de `app.py`.
-
-**Cambios realizados:**
-
-1.  **Corrección visual del Input:** He actualizado el CSS para forzar el color del texto a blanco brillante y el fondo del contenedor a un verde oscuro sólido. Esto soluciona el problema de "letras blancas sobre fondo blanco".
-2.  **Restricción de Alucinaciones:** He modificado el `SYSTEM_PROMPT` con instrucciones estrictas para que la IA responda **únicamente** basándose en el contexto proporcionado. Si no tiene información, debe admitirlo en lugar de inventar.
-3.  **Mejora en detección de PDFs:** Mantengo la ruta absoluta y el botón de recarga para asegurar que los archivos se lean correctamente.
-
-Copia y pega este código completo:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import os
