@@ -1,3 +1,14 @@
+Aquí tienes la versión mejorada de `app.py`.
+
+**Cambios realizados:**
+
+1.  **Corrección visual del Input:** He actualizado el CSS para forzar el color del texto a blanco brillante y el fondo del contenedor a un verde oscuro sólido. Esto soluciona el problema de "letras blancas sobre fondo blanco".
+2.  **Restricción de Alucinaciones:** He modificado el `SYSTEM_PROMPT` con instrucciones estrictas para que la IA responda **únicamente** basándose en el contexto proporcionado. Si no tiene información, debe admitirlo en lugar de inventar.
+3.  **Mejora en detección de PDFs:** Mantengo la ruta absoluta y el botón de recarga para asegurar que los archivos se lean correctamente.
+
+Copia y pega este código completo:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -18,49 +29,61 @@ except ImportError:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE CARPETA Y CARGA DE DOCUMENTOS (MOVIDO AL INICIO)
+# CONFIGURACIÓN DE CARPETA (RUTA ABSOLUTA)
 # ═══════════════════════════════════════════════════════════════
-DOCS_FOLDER = "documentos"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DOCS_FOLDER = os.path.join(BASE_DIR, "documentos")
 
-@st.cache_resource
 def load_knowledge_base():
-    # Asegurar que la carpeta exista
     if not os.path.exists(DOCS_FOLDER):
-        os.makedirs(DOCS_FOLDER)
-        return None, []
+        try:
+            os.makedirs(DOCS_FOLDER)
+        except OSError as e:
+            st.error(f"Error al crear la carpeta 'documentos': {e}")
+            return None, []
 
     pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
+    
     if not pdf_files: 
         return None, []
 
     all_docs = []
     valid_files = []
+    error_files = []
+
+    for pdf_path in pdf_files:
+        try:
+            loader = PyPDFLoader(pdf_path)
+            docs = loader.load()
+            if not docs:
+                continue
+            
+            filename = os.path.basename(pdf_path)
+            for doc in docs: 
+                doc.metadata["source"] = filename
+            
+            all_docs.extend(docs)
+            valid_files.append(filename)
+        except Exception as e:
+            error_files.append((os.path.basename(pdf_path), str(e)))
+
+    if error_files:
+        st.warning(f"⚠️ No se pudieron leer {len(error_files)} archivos (posiblemente corruptos o protegidos).")
+        with st.expander("Ver errores de carga"):
+            for fname, err in error_files:
+                st.text(f"{fname}: {err}")
+
+    if not all_docs: 
+        return None, []
 
     try:
-        for pdf_path in pdf_files:
-            try:
-                loader = PyPDFLoader(pdf_path)
-                docs = loader.load()
-                filename = os.path.basename(pdf_path)
-                for doc in docs: 
-                    doc.metadata["source"] = filename
-                all_docs.extend(docs)
-                valid_files.append(filename)
-            except Exception:
-                pass
-
-        if not all_docs: 
-            return None, []
-
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = text_splitter.split_documents(all_docs)
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(splits, embeddings)
-
         return vectorstore.as_retriever(), valid_files
-
     except Exception as e:
-        st.error(f"Error al crear base vectorial: {e}")
+        st.error(f"Error al procesar embeddings: {e}")
         return None, []
 
 # CONFIGURACIÓN DE PÁGINA
@@ -73,7 +96,7 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# CSS PROFESIONAL Y DINÁMICO
+# CSS PROFESIONAL Y DINÁMICO (INPUT CORREGIDO)
 # ═══════════════════════════════════════════════════════════════
 css_juventud = """
 <style>
@@ -239,23 +262,33 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* INPUT CHAT */
+    /* ═══════════ INPUT CHAT CORREGIDO (LEGGIBLE) ═══════════ */
+    /* Contenedor principal del input */
     [data-testid="stChatInput"] {
-        border: 2px solid rgba(250, 204, 21, 0.3) !important;
+        border: 2px solid rgba(250, 204, 21, 0.5) !important;
         border-radius: 24px !important;
-        background: rgba(2, 44, 34, 0.95) !important;
+        background-color: #052e16 !important; /* Fondo verde oscuro sólido */
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     
-    [data-testid="stChatInput"] textarea {
-        color: #ffffff !important;
+    /* Área de texto interna */
+    [data-testid="stChatInput"] textarea,
+    [data-testid="stChatInputTextArea"] {
+        background-color: transparent !important; /* Hereda el fondo del contenedor */
+        color: #ffffff !important; /* TEXTO BLANCO PURO PARA LEGIBILIDAD */
         font-weight: 500;
+        font-size: 1rem !important;
+        caret-color: #facc15; /* Color del cursor */
     }
     
-    [data-testid="stChatInput"] textarea::placeholder {
-        color: #d1d5db !important;
-        opacity: 1;
+    /* Placeholder */
+    [data-testid="stChatInput"] textarea::placeholder,
+    [data-testid="stChatInputTextArea"]::placeholder {
+        color: #a7f3d0 !important; /* Verde claro para que se vea */
+        opacity: 0.8;
     }
 
+    /* Botón de enviar dentro del input */
     [data-testid="stChatInput"] button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
@@ -361,21 +394,18 @@ with st.sidebar:
 
     # Lógica de carga de archivos
     st.markdown("#### 📦 Cargar PDFs")
-    st.caption(f"Los archivos se guardan en la carpeta `{DOCS_FOLDER}`")
+    st.caption(f"Los archivos se guardan en la carpeta `documentos`")
     
-    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs para añadir a la base de datos", type="zip", key="zip_uploader")
+    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs para añadir", type="zip", key="zip_uploader")
 
     if uploaded_zip:
-        # Verificamos si es un archivo nuevo para procesarlo
         if "processed_zip_name" not in st.session_state or st.session_state.processed_zip_name != uploaded_zip.name:
             try:
                 with zipfile.ZipFile(uploaded_zip, 'r') as z:
                     z.extractall(DOCS_FOLDER)
                 st.session_state.processed_zip_name = uploaded_zip.name
-                st.toast(f"✅ Archivos extraídos en '{DOCS_FOLDER}'. Recargando base de datos...")
-                
-                # Limpiamos la caché para forzar la recarga de la base de datos
-                load_knowledge_base.clear()
+                st.toast(f"✅ Archivos extraídos. Recargando...")
+                st.cache_resource.clear()
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al descomprimir: {e}")
@@ -383,14 +413,18 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown("#### 📚 Archivos Cargados")
-    # Mostramos los archivos actualmente en la base de datos
+    
+    if st.button("🔄 Recargar Base de Datos", use_container_width=True):
+        st.cache_resource.clear()
+        st.rerun()
+
     if st.session_state.get("loaded_files"):
         st.success(f"🟢 {len(st.session_state.loaded_files)} Documentos Activos")
         with st.expander("Ver lista"):
             for f in st.session_state.loaded_files:
                 st.write(f"📄 {f}")
     else:
-        st.info(f"🔴 Repositorio Vacío. Añade PDFs en la carpeta '{DOCS_FOLDER}' o sube un ZIP.")
+        st.info(f"🔴 Repositorio Vacío. Añade PDFs en la carpeta o sube un ZIP.")
 
     st.markdown("---")
 
@@ -414,7 +448,7 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# FUNCIONES DE VOZ Y PERSONALIDAD
+# PERSONALIDAD Y REGLAS (SIN ALUCINACIONES)
 # ═══════════════════════════════════════════════════════════════
 SYSTEM_PROMPT = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
@@ -423,7 +457,11 @@ Tus principios:
 2. "Adelante, siempre adelante".
 3. "Estar siempre útilmente ocupados".
 Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
-Si te preguntan sobre documentos, usa el contexto proporcionado para responder con precisión.
+
+REGLAS ESTRICTAS DE CONOCIMIENTO:
+1. Responde EXCLUSIVAMENTE basándote en el contexto proporcionado de los documentos PDF.
+2. Si la respuesta no se encuentra en el contexto proporcionado, responde amablemente: "Lo siento, joven josefino, no tengo información disponible en mi base de documentos actual sobre ese tema específico. Te sugiero consultar las fuentes oficiales o recargar la base de datos si crees que debería estar ahí."
+3. NUNCA inventes información, fechas o procedimientos que no estén explícitamente en el texto proporcionado.
 """
 
 # ═══════════════════════════════════════════════════════════════
@@ -432,7 +470,6 @@ Si te preguntan sobre documentos, usa el contexto proporcionado para responder c
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
-# Cargamos la base de datos si no está en sesión o si fue limpiada
 if "retriever" not in st.session_state:
     retriever, loaded_files = load_knowledge_base()
     st.session_state.retriever = retriever
@@ -561,3 +598,4 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
+```
