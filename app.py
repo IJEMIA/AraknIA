@@ -57,10 +57,7 @@ def load_knowledge_base():
             error_files.append((os.path.basename(pdf_path), str(e)))
 
     if error_files:
-        st.warning(f"⚠️ No se pudieron leer {len(error_files)} archivos (posiblemente corruptos o protegidos).")
-        with st.expander("Ver errores de carga"):
-            for fname, err in error_files:
-                st.text(f"{fname}: {err}")
+        st.warning(f"⚠️ No se pudieron leer {len(error_files)} archivos.")
 
     if not all_docs: 
         return None, []
@@ -85,7 +82,7 @@ st.set_page_config(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# CSS PROFESIONAL Y DINÁMICO (INPUT CORREGIDO)
+# CSS PROFESIONAL Y DINÁMICO
 # ═══════════════════════════════════════════════════════════════
 css_juventud = """
 <style>
@@ -251,33 +248,29 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* ═══════════ INPUT CHAT CORREGIDO (LEGGIBLE) ═══════════ */
-    /* Contenedor principal del input */
+    /* INPUT CHAT (FONDO BLANCO / LETRA NEGRA) */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.5) !important;
         border-radius: 24px !important;
-        background-color: #052e16 !important; /* Fondo verde oscuro sólido */
+        background-color: #ffffff !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     
-    /* Área de texto interna */
     [data-testid="stChatInput"] textarea,
     [data-testid="stChatInputTextArea"] {
-        background-color: transparent !important; /* Hereda el fondo del contenedor */
-        color: #ffffff !important; /* TEXTO BLANCO PURO PARA LEGIBILIDAD */
+        background-color: transparent !important;
+        color: #022c22 !important;
         font-weight: 500;
         font-size: 1rem !important;
-        caret-color: #facc15; /* Color del cursor */
+        caret-color: #022c22;
     }
     
-    /* Placeholder */
     [data-testid="stChatInput"] textarea::placeholder,
     [data-testid="stChatInputTextArea"]::placeholder {
-        color: #a7f3d0 !important; /* Verde claro para que se vea */
-        opacity: 0.8;
+        color: #6b7280 !important;
+        opacity: 1;
     }
 
-    /* Botón de enviar dentro del input */
     [data-testid="stChatInput"] button {
         background: linear-gradient(135deg, #facc15 0%, #fbbf24 100%) !important;
         color: #022c22 !important;
@@ -437,9 +430,10 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y REGLAS (SIN ALUCINACIONES)
+# PERSONALIDAD Y MODO PLANEACIÓN
 # ═══════════════════════════════════════════════════════════════
-SYSTEM_PROMPT = """
+
+SYSTEM_PROMPT_BASE = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
 Tus principios:
 1. "Hacer siempre y en todo lo mejor".
@@ -449,8 +443,38 @@ Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
 
 REGLAS ESTRICTAS DE CONOCIMIENTO:
 1. Responde EXCLUSIVAMENTE basándote en el contexto proporcionado de los documentos PDF.
-2. Si la respuesta no se encuentra en el contexto proporcionado, responde amablemente: "Lo siento, joven josefino, no tengo información disponible en mi base de documentos actual sobre ese tema específico. Te sugiero consultar las fuentes oficiales o recargar la base de datos si crees que debería estar ahí."
-3. NUNCA inventes información, fechas o procedimientos que no estén explícitamente en el texto proporcionado.
+2. Si la respuesta no se encuentra en el contexto, indícalo amablemente.
+3. NUNCA inventes información que no esté en el texto.
+"""
+
+SYSTEM_PROMPT_PLANNING = """
+Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
+Tu misión es asistir al docente Josefino para crear una planeación didáctica completa.
+
+INSTRUCCIONES DE INTERACCIÓN:
+1. Debes recolectar la siguiente información obligatoria si el usuario no la proporciona:
+   - Plan de estudios o Programa educativo (ej. Primaria, Secundaria, Programa Sintético).
+   - Unidades o Contenidos a trabajar.
+   - Días en que imparte clase.
+   - Número de sesiones planificadas.
+   
+2. Estrategia de conversación:
+   - Si el usuario dice "vamos a planear" pero no da datos, pregunta amablemente por el **Plan de estudios** primero.
+   - Luego pregunta por las **Unidades**.
+   - Luego por los **Días y Sesiones**.
+   - No generes la planeación completa hasta tener estos datos.
+
+3. Generación de la Planeación:
+   - Una vez tengas los datos, busca en el contexto (documentos) si existe una "Plantilla Planeación" o estructura específica y úsala estrictamente.
+   - Si no hay plantilla en los documentos, genera una estructura profesional experta que incluya:
+     * Datos Generales
+     * Propósito/Aprendizajes Esperados
+     * Secuencia Didáctica (Inicio, Desarrollo, Cierre)
+     * Recursos Didácticos
+     * Evaluación
+   - Formatea la respuesta claramente en Markdown.
+
+Mantén el tono cordial y animador típico de Juventud 2.0.
 """
 
 # ═══════════════════════════════════════════════════════════════
@@ -458,6 +482,9 @@ REGLAS ESTRICTAS DE CONOCIMIENTO:
 # ═══════════════════════════════════════════════════════════════
 if "messages" not in st.session_state: 
     st.session_state.messages = []
+
+if "planning_mode" not in st.session_state:
+    st.session_state.planning_mode = False
 
 if "retriever" not in st.session_state:
     retriever, loaded_files = load_knowledge_base()
@@ -519,15 +546,26 @@ if audio_data:
         )
         if transcription.text:
             st.toast(f"🎤 Escuché: {transcription.text}")
-            st.session_state.messages.append({"role": "user", "content": transcription.text})
+            # Simular input de texto para procesar en la misma lógica
+            prompt = transcription.text
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            
+            # Detectar activación de modo planeación
+            if "vamos a planear" in prompt.lower():
+                st.session_state.planning_mode = True
+                st.toast("📑 Modo Planeación Didáctica Activado")
 
+            # Selección de Prompt
+            current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
+
+            # RAG Context
             context_text = ""
             if st.session_state.get("retriever"):
-                docs = st.session_state.retriever.invoke(transcription.text)
+                docs = st.session_state.retriever.invoke(prompt)
                 if docs:
                     context_text = "\n\n".join([d.page_content for d in docs])
 
-            full_prompt = SYSTEM_PROMPT
+            full_prompt = current_prompt
             if context_text:
                 full_prompt += f"\n\nContexto de documentos:\n{context_text}"
 
@@ -548,13 +586,21 @@ if audio_data:
 if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
+    # Detectar activación de modo planeación
+    if "vamos a planear" in prompt.lower():
+        st.session_state.planning_mode = True
+        st.toast("📑 Modo Planeación Didáctica Activado")
+
+    # Selección de Prompt
+    current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
+
     context_text = ""
     if st.session_state.get("retriever"):
         docs = st.session_state.retriever.invoke(prompt)
         if docs:
             context_text = "\n\n".join([d.page_content for d in docs])
 
-    full_prompt = SYSTEM_PROMPT
+    full_prompt = current_prompt
     if context_text:
         full_prompt += f"\n\nContexto de documentos:\n{context_text}"
 
