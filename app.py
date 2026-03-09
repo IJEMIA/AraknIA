@@ -1,13 +1,3 @@
-Entendido. He modificado el código para implementar el flujo conversacional paso a paso que solicitaste.
-
-**Cambios principales realizados:**
-1.  **Nuevo Flujo en `SYSTEM_PROMPT_PLANNING`**: Se programó al modelo para seguir la secuencia estricta: Activación -> Preguntar Repositorio -> Preguntar Unidad/Sesiones -> Preguntar Días -> Generar 5 ejemplos -> Preguntar cambios -> Generar final.
-2.  **Extracción Estricta**: Se instruyó explícitamente al modelo para que los contenidos conceptuales, procedimentales y actitudinales sean copiados o extraídos fielmente del "Programa de estudios" (PDF) y no inventados.
-3.  **Metadatos en Contexto**: Se modificó la función de recuperación para que el modelo sepa qué archivo está leyendo (Fuente: nombre_archivo.pdf), permitiéndole validar el repositorio que el usuario indique.
-
-Aquí tienes el código completo actualizado:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -657,4 +647,3 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
-```
