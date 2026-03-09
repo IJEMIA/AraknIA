@@ -63,8 +63,8 @@ def load_knowledge_base():
         return None, []
 
     try:
-        # MEJORA: Aumentamos chunk_size para que lea más contexto de cada vez
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+        # AJUSTE: Reducimos chunk_size para optimizar el consumo de tokens
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         splits = text_splitter.split_documents(all_docs)
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(splits, embeddings)
@@ -456,7 +456,7 @@ Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
 **REGLAS DE ORO (INQUEBRANTABLE):**
 1. **VERACIDAD ABSOLUTA**: Toda información debe provenir **EXCLUSIVAMENTE** del texto proporcionado en la sección "Contexto de documentos".
 2. **PROHIBIDO INVENTAR**: Si el contexto no muestra explícitamente el nombre de una unidad, contenido o tema, responde: "No pude encontrar esa información específica en el archivo seleccionado".
-3. **EXHAUSTIVIDAD**: Lista TODAS las unidades que encuentres en el texto. Si el texto dice "Unidad 1, 2, 3", lista las tres. No te detengas en la primera.
+3. **LISTADO PARCIAL**: Si el contexto proporcionado es solo parcial, lista lo que encuentres y menciona "Lista de unidades detectadas en el fragmento disponible".
 
 **FLUJO DE INTERACCIÓN:**
 
@@ -468,8 +468,8 @@ Si el usuario dice "vamos a planear":
 **PASO 2: LECTURA Y LISTADO DE UNIDADES**
 Cuando el usuario responda con un número:
 1. Identifica el nombre del archivo.
-2. Analiza el **Contexto de documentos** (que proviene de diversas partes del PDF).
-3. Extrae y LISTA todas las Unidades/Bloques encontrados con su número y título.
+2. Analiza el **Contexto de documentos**.
+3. Extrae y LISTA las Unidades/Bloques encontrados.
 4. Pregunta: "¿Qué **número** de unidad(es) vamos a planear?"
 
 **PASO 3: SESIONES**
@@ -549,28 +549,26 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
     if selected_file_index is not None:
         target_filename = loaded_files[selected_file_index]
         try:
-            # CORRECCIÓN CLAVE: Usamos MMR (Maximal Marginal Relevance)
-            # Esto permite traer fragmentos DIVERSOS de todo el documento, no solo los más parecidos.
-            # k=50: Traer 50 fragmentos.
-            # fetch_k=200: Buscar en los 200 más relevantes y elegir los 50 más diversos.
+            # AJUSTE CRÍTICO: Reducimos k a 10 para evitar Error 413
+            # Usamos MMR para obtener diversidad pero en menor cantidad
             docs = vectorstore.max_marginal_relevance_search(
                 query="Unidades Bloques Contenido Temario Estructura Títulos Competencias", 
-                k=50, 
-                fetch_k=200, 
+                k=10, # Reducido de 50 a 10 para no exceder tokens
+                fetch_k=50, # Reducido de 200 a 50
                 filter={"source": target_filename}
             )
             
             if not docs:
                 return f"El archivo {target_filename} parece estar vacío o no se pudo leer su estructura.", target_filename
             
-            context_text = "\n\n---\n\n".join([f"Página/Fragmento de {doc.metadata.get('source')}:\n{doc.page_content}" for doc in docs])
+            context_text = "\n\n---\n\n".join([f"Fragmento:\n{doc.page_content}" for doc in docs])
             return context_text, target_filename
         except Exception as e:
             return f"Error al leer {target_filename}: {e}", target_filename
     else:
         # Búsqueda general
         try:
-            retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
+            retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
             docs = retriever.invoke(user_input)
             return "\n\n---\n\n".join([f"Fuente: {doc.metadata.get('source', 'Desconocido')}\n{doc.page_content}" for doc in docs]), None
         except Exception as e:
