@@ -1,14 +1,5 @@
-El problema de que "falle al detectar las unidades" generalmente ocurre por dos razones:
+ contenido.
 
-1.  **Ceguera de la búsqueda vectorial**: La búsqueda normal busca textos que se *parecen* a la pregunta. Si la estructura del PDF usa palabras como "Módulo", "Tema", "Bloque" o solo números romanos (I, II, III), y nosotros buscamos "Unidades", la búsqueda puede no encontrarlos.
-2.  **Fragmentación del texto**: Si el PDF tiene un diseño visual complejo (como muchas tablas), el texto se corta en pedazos pequeños y el encabezado "Unidad 1" puede quedarse desconectado de su contenido.
-
-**La Solución:**
-Voy a implementar una estrategia de **"Búsqueda Multi-Intención"**. En lugar de buscar una sola vez, el sistema lanzará 4 búsquedas simultáneas con diferentes palabras clave ("Unidades", "Contenido", "Bloques", "Índice") y combinará los mejores resultados. Esto aumenta drásticamente la probabilidad de encontrar la estructura real del documento.
-
-Aquí tienes el código optimizado para detección de estructura:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -716,4 +707,3 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
-```
