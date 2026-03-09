@@ -430,9 +430,8 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y MODO PLANEACIÓN (FLUJO V5 - LECTURA ESTRICTA)
+# PERSONALIDAD Y MODO PLANEACIÓN
 # ═══════════════════════════════════════════════════════════════
-
 SYSTEM_PROMPT_BASE = """
 Eres **Juventud 2.0**, una Inteligencia Artificial diseñada para la comunidad Josefina. Creada por el Profe Adrián.
 Tus principios:
@@ -442,7 +441,6 @@ Tus principios:
 Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
 """
 
-# Generamos la lista de archivos
 loaded_files_list_str = "No hay archivos cargados."
 if st.session_state.get("loaded_files"):
     loaded_files_list_str = "\n".join([f"{i+1}. {fname}" for i, fname in enumerate(st.session_state.loaded_files)])
@@ -455,8 +453,8 @@ Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
 -----------------------------------------
 
 **REGLAS DE ORO (INQUEBRANTABLE):**
-1. **VERACIDAD ABSOLUTA**: Toda información (Unidades, Contenidos, Objetivos) debe provenir **EXCLUSIVAMENTE** del texto proporcionado en la sección "Contexto de documentos".
-2. **PROHIBIDO INVENTAR**: Si el contexto no muestra explícitamente el nombre de una unidad o contenido, responde: "No pude encontrar esa información específica en el archivo seleccionado". **JAMÁS** inventes nombres de unidades o contenidos.
+1. **VERACIDAD ABSOLUTA**: Toda información debe provenir **EXCLUSIVAMENTE** del texto proporcionado en la sección "Contexto de documentos".
+2. **PROHIBIDO INVENTAR**: Si el contexto no muestra explícitamente el nombre de una unidad o contenido, responde: "No pude encontrar esa información específica en el archivo seleccionado".
 3. Si el usuario selecciona un archivo por número, tu prioridad es buscar en el contexto de ese archivo.
 
 **FLUJO DE INTERACCIÓN:**
@@ -469,7 +467,7 @@ Si el usuario dice "vamos a planear":
 **PASO 2: LECTURA Y LISTADO DE UNIDADES**
 Cuando el usuario responda con un número:
 1. Identifica el nombre del archivo correspondiente.
-2. Analiza el **Contexto de documentos** provisto (que estará filtrado para ese archivo).
+2. Analiza el **Contexto de documentos** provisto.
 3. Extrae **EXCLUSIVAMENTE** del contexto los nombres de las Unidades, Módulos o Bloques.
 4. Enumera las unidades encontradas (ej: 1. Unidad I: ..., 2. Unidad II: ...).
 5. Pregunta: "¿Qué **número** de unidad(es) vamos a planear?"
@@ -510,7 +508,7 @@ if "vectorstore" not in st.session_state:
     st.session_state.loaded_files = loaded_files
 
 # ═══════════════════════════════════════════════════════════════
-# LÓGICA DE PROCESAMIENTO
+# FUNCIONES AUXILIARES
 # ═══════════════════════════════════════════════════════════════
 
 def get_audio_button_html(text, key):
@@ -538,7 +536,6 @@ def get_audio_button_html(text, key):
     </div>
     """
 
-# Función optimizada para leer el archivo correcto
 def get_context_for_planning(user_input, vectorstore, loaded_files):
     selected_file_index = None
     if loaded_files:
@@ -552,12 +549,10 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
     if selected_file_index is not None:
         target_filename = loaded_files[selected_file_index]
         try:
-            # CORRECCIÓN CLAVE: Aumentamos fetch_k para asegurar que encuentre el archivo correcto
-            # Buscamos 50 documentos candidatos y luego filtramos por el archivo
             docs = vectorstore.similarity_search(
                 query="Unidades Bloques Contenido Temario Estructura Títulos", 
-                k=30, # Devolver hasta 30 fragmentos del archivo correcto
-                fetch_k=100, # Buscar en los 100 más parecidos globales antes de filtrar
+                k=30, 
+                fetch_k=100, 
                 filter={"source": target_filename}
             )
             if not docs:
@@ -568,13 +563,31 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
         except Exception as e:
             return f"Error al leer {target_filename}: {e}", target_filename
     else:
-        # Búsqueda general
         try:
             retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
             docs = retriever.invoke(user_input)
             return "\n\n---\n\n".join([f"Fuente: {doc.metadata.get('source', 'Desconocido')}\n{doc.page_content}" for doc in docs]), None
         except Exception as e:
             return "", None
+
+# ═══════════════════════════════════════════════════════════════
+# INTERFAZ DE CHAT
+# ═══════════════════════════════════════════════════════════════
+
+# CORRECCIÓN: Inicializamos audio_data antes de usarla para evitar NameError
+audio_data = None
+
+st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
+try:
+    audio_data = mic_recorder(
+        start_prompt="🎤 Iniciar Grabación de Voz",
+        stop_prompt="🛑 Detener Grabación",
+        just_once=False,
+        key="mic_main_btn"
+    )
+except Exception as e:
+    st.warning("El componente de micrófono no está disponible en este entorno.")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # Procesar audio
 if audio_data:
