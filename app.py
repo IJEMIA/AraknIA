@@ -1,14 +1,3 @@
-Aquí tienes el código corregido y optimizado para `app.py`.
-
-He realizado las siguientes mejoras específicas para tu solicitud:
-1.  **Actualización del System Prompt de Planeación**: Ahora incluye explícitamente la estructura del documento que proporcionaste (`2. PLANEACIÓN`, `2.1 Descripción...`, `2.2 Planeación por sesión`).
-2.  **Instrucciones Estrictas de RAG**: Se ordena al modelo que priorice la información del "Programa de la asignatura" encontrado en los documentos para llenar los campos conceptuales, procedimentales y actitudinales, en lugar de inventarlos.
-3.  **Taxonomía de Bloom**: Se añadió la instrucción en el prompt para que los objetivos de sesión utilicen verbos de esta taxonomía.
-4.  **Estructura de Actividades**: Se forzó el formato Inicio, Desarrollo y Cierre dentro de la generación.
-
-Copia y pega este código completo en tu archivo `app.py`:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -657,4 +646,3 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
-```
