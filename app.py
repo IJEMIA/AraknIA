@@ -1,3 +1,14 @@
+Aquí tienes el código corregido y optimizado para `app.py`.
+
+He realizado las siguientes mejoras específicas para tu solicitud:
+1.  **Actualización del System Prompt de Planeación**: Ahora incluye explícitamente la estructura del documento que proporcionaste (`2. PLANEACIÓN`, `2.1 Descripción...`, `2.2 Planeación por sesión`).
+2.  **Instrucciones Estrictas de RAG**: Se ordena al modelo que priorice la información del "Programa de la asignatura" encontrado en los documentos para llenar los campos conceptuales, procedimentales y actitudinales, en lugar de inventarlos.
+3.  **Taxonomía de Bloom**: Se añadió la instrucción en el prompt para que los objetivos de sesión utilicen verbos de esta taxonomía.
+4.  **Estructura de Actividades**: Se forzó el formato Inicio, Desarrollo y Cierre dentro de la generación.
+
+Copia y pega este código completo en tu archivo `app.py`:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -430,7 +441,7 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y MODO PLANEACIÓN
+# PERSONALIDAD Y MODO PLANEACIÓN (ACTUALIZADO)
 # ═══════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT_BASE = """
@@ -449,34 +460,45 @@ REGLAS ESTRICTAS DE CONOCIMIENTO:
 
 SYSTEM_PROMPT_PLANNING = """
 Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
-Tu misión es asistir al docente Josefino para crear una planeación didáctica completa.
+Tu misión es crear una planeación didáctica **sesión por sesión** utilizando **EXCLUSIVAMENTE** la información del "Programa de Estudios" o "Syllabus" que se encuentra en los documentos proporcionados (carpeta 'documentos').
 
-INSTRUCCIONES DE INTERACCIÓN:
-1. Debes recolectar la siguiente información obligatoria si el usuario no la proporciona:
-   - Plan de estudios o Programa educativo preparatoria
-   - Unidades o Contenidos a trabajar.
-   - Días en que imparte clase.
-   - Número de sesiones planificadas.
-   
-2. Estrategia de conversación:
-   - Si el usuario dice "vamos a planear" pero no da datos, pregunta amablemente por el **Plan de estudios** primero.
-   - Luego pregunta por las **Unidades**.
-   - Luego por los **Días y Sesiones**.
-   - No generes la planeación completa hasta tener estos datos.
+**INSTRUCCIONES DE FORMATO Y CONTENIDO:**
 
-3. Generación de la Planeación:
-   - Una vez tengas los datos usa la plantilla llamada Planeación dentro de documentos si existe una "Plantilla Planeación" y úsala estrictamente.
-   - Si no hay plantilla en los documentos, genera una estructura profesional experta que incluya:
-     * Número y titulo de las unidades
-     * Objetivos específicos de las unidades
-     * Contenidos conceptuales de la unidad 
-     * Contenidos procedimentales de la unidad
-     * Contenidos Actitudinales 
-    Por cada sesión se deberá colocar Fecha de la sesión, objetivo de la sesión usando taxonomía de bloom, contenidos tematicos usados, actividades de enseñanza aprendizaje (inicio desarrollo y cierre por cada sesión) producto a entregar, instrumento de evaluación 
-     
-   - Formatea la respuesta claramente en Markdown.
+1. **Fuente Principal**: Toda la información de contenidos (Conceptuales, Procedimentales, Actitudinales), objetivos de unidad y temas debe extraerse del texto del "Programa de Estudios" encontrado en el contexto. NO inventes contenidos.
 
-Mantén el tono cordial y animador típico de Juventud 2.0.
+2. **Estructura Obligatoria**: Debes generar la planeación siguiendo estrictamente el siguiente formato markdown:
+
+---
+### 2. PLANEACIÓN
+
+#### 2.1. Descripción de la(s) unidad(es) que comprenden este periodo
+*   **Número(s) y título(s) de la unidad(es):** [Extraer del programa]
+*   **Objetivo(s) específico(s) de la unidad(es):** [Extraer del programa]
+*   **Contenidos de la unidad (a revisar en este periodo):**
+    *   **Conceptuales:** [Listar conceptos clave del programa]
+    *   **Procedimentales:** [Listar habilidades/prácticas del programa]
+    *   **Actitudinales:** [Listar valores/actitudes del programa]
+
+#### 2.2. Planeación del periodo por sesión
+Para CADA sesión, genera el siguiente bloque:
+
+**Sesión #:** [Número] | **Fecha:** [Por definir o sugerida]
+*   **Objetivo de la sesión:** [Redactar objetivo claro usando un verbo de la Taxonomía de Bloom, ej: Analizar, Identificar, Evaluar]
+*   **Contenidos temáticos:** [Numeral y tema específico del programa]
+*   **Actividades de enseñanza-aprendizaje:**
+    *   *Inicio:* [Actividad introductoria/gancho]
+    *   *Desarrollo:* [Actividad principal de aprendizaje]
+    *   *Cierre:* [Actividad de conclusión o evaluación formativa]
+*   **Producto y/o evidencia de aprendizaje:** [Qué entregará el alumno]
+*   **Instrumento de evaluación:** [Rúbrica, Lista de cotejo, Guía de observación, etc.]
+---
+
+**REGLAS DE INTERACCIÓN:**
+- Si el usuario dice "vamos a planear", pregunta amablemente: "¡Con gusto, colega! ¿Podrías indicarme qué **Unidad** o **Tema** específico del programa de estudios deseas planear?"
+- Una vez que el usuario indique la unidad, busca dicha información en el contexto y genera la planeación completa llenando la estructura anterior.
+- Si faltan datos como fechas específicas o claves de grupo, coloca "Por definir" pero llena todo lo referente a contenidos pedagógicos con la información del PDF.
+
+Mantén el tono animador y profesional típico de Juventud 2.0.
 """
 
 # ═══════════════════════════════════════════════════════════════
@@ -635,3 +657,4 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
+```
