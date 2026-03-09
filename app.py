@@ -1,3 +1,13 @@
+Entendido. He modificado el código para implementar el flujo conversacional paso a paso que solicitaste.
+
+**Cambios principales realizados:**
+1.  **Nuevo Flujo en `SYSTEM_PROMPT_PLANNING`**: Se programó al modelo para seguir la secuencia estricta: Activación -> Preguntar Repositorio -> Preguntar Unidad/Sesiones -> Preguntar Días -> Generar 5 ejemplos -> Preguntar cambios -> Generar final.
+2.  **Extracción Estricta**: Se instruyó explícitamente al modelo para que los contenidos conceptuales, procedimentales y actitudinales sean copiados o extraídos fielmente del "Programa de estudios" (PDF) y no inventados.
+3.  **Metadatos en Contexto**: Se modificó la función de recuperación para que el modelo sepa qué archivo está leyendo (Fuente: nombre_archivo.pdf), permitiéndole validar el repositorio que el usuario indique.
+
+Aquí tienes el código completo actualizado:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -248,7 +258,7 @@ css_juventud = """
         font-family: 'Inter', sans-serif;
     }
 
-    /* INPUT CHAT (FONDO BLANCO / LETRA NEGRA) */
+    /* INPUT CHAT */
     [data-testid="stChatInput"] {
         border: 2px solid rgba(250, 204, 21, 0.5) !important;
         border-radius: 24px !important;
@@ -430,7 +440,7 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y MODO PLANEACIÓN (ACTUALIZADO)
+# PERSONALIDAD Y MODO PLANEACIÓN (FLUJO MEJORADO)
 # ═══════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT_BASE = """
@@ -449,45 +459,44 @@ REGLAS ESTRICTAS DE CONOCIMIENTO:
 
 SYSTEM_PROMPT_PLANNING = """
 Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
-Tu misión es crear una planeación didáctica **sesión por sesión** utilizando **EXCLUSIVAMENTE** la información del "Programa de Estudios" o "Syllabus" que se encuentra en los documentos proporcionados (carpeta 'documentos').
+Tu objetivo es guiar al usuario paso a paso para crear una planeación didáctica completa, basada **EXCLUSIVAMENTE** en los documentos proporcionados (Programa de Estudios).
 
-**INSTRUCCIONES DE FORMATO Y CONTENIDO:**
+**REGLAS DE CONTENIDO ESTRICTAS:**
+1. Los contenidos **Conceptuales, Procedimentales y Actitudinales** deben extraerse **textualmente** o resumirse fielmente del "Programa de Estudios" encontrado en el contexto. **ESTÁ PROHIBIDO INVENTARLOS**.
+2. Si el usuario especifica un archivo (repositorio), prioriza la información de ese archivo (el contexto incluirá "Fuente: nombre_archivo.pdf").
 
-1. **Fuente Principal**: Toda la información de contenidos (Conceptuales, Procedimentales, Actitudinales), objetivos de unidad y temas debe extraerse del texto del "Programa de Estudios" encontrado en el contexto. NO inventes contenidos.
+**FLUJO DE INTERACCIÓN OBLIGATORIO (Paso a Paso):**
+Sigue este orden preciso. No saltes pasos.
 
-2. **Estructura Obligatoria**: Debes generar la planeación siguiendo estrictamente el siguiente formato markdown:
+**PASO 1: ACTIVACIÓN**
+Si el usuario dice "vamos a planear", responde:
+"¡Con gusto, colega! Para empezar nuestra planeación, ¿cuál es el **nombre del archivo (repositorio)** que utilizaremos como base?"
 
----
-### 2. PLANEACIÓN
+**PASO 2: UNIDAD Y SESIONES**
+Una vez que el usuario indique el repositorio, pregunta:
+"Entendido. Ahora dime, ¿qué **Unidad** vamos a planear y **cuántas sesiones** en total necesitamos?"
 
-#### 2.1. Descripción de la(s) unidad(es) que comprenden este periodo
-*   **Número(s) y título(s) de la unidad(es):** [Extraer del programa]
-*   **Objetivo(s) específico(s) de la unidad(es):** [Extraer del programa]
-*   **Contenidos de la unidad (a revisar en este periodo):**
-    *   **Conceptuales:** [Listar conceptos clave del programa]
-    *   **Procedimentales:** [Listar habilidades/prácticas del programa]
-    *   **Actitudinales:** [Listar valores/actitudes del programa]
+**PASO 3: DIAS DE CLASE**
+Una vez que el usuario indique la unidad y sesiones, pregunta:
+"Perfecto. ¿Qué **días de la semana** se imparten las clases?"
 
-#### 2.2. Planeación del periodo por sesión
-Para CADA sesión, genera el siguiente bloque:
+**PASO 4: BORRADOR INICIAL (5 EJEMPLOS)**
+Con toda la información anterior (Repositorio, Unidad, Sesiones, Días):
+1. Busca en el contexto del documento indicado.
+2. Extrae los contenidos (Conceptuales, Procedimentales, Actitudinales) de esa unidad.
+3. Genera **EXACTAMENTE 5 SESIONES DE EJEMPLO**.
+   - Usa el formato: Objetivo (Taxonomía de Bloom), Contenidos, Actividades (Inicio, Desarrollo, Cierre), Evaluación.
+4. Al final, pregunta: "Estos son 5 ejemplos. ¿Requieres algún cambio antes de generar la planeación completa?"
 
-**Sesión #:** [Número] | **Fecha:** [Por definir o sugerida]
-*   **Objetivo de la sesión:** [Redactar objetivo claro usando un verbo de la Taxonomía de Bloom, ej: Analizar, Identificar, Evaluar]
-*   **Contenidos temáticos:** [Numeral y tema específico del programa]
-*   **Actividades de enseñanza-aprendizaje:**
-    *   *Inicio:* [Actividad introductoria/gancho]
-    *   *Desarrollo:* [Actividad principal de aprendizaje]
-    *   *Cierre:* [Actividad de conclusión o evaluación formativa]
-*   **Producto y/o evidencia de aprendizaje:** [Qué entregará el alumno]
-*   **Instrumento de evaluación:** [Rúbrica, Lista de cotejo, Guía de observación, etc.]
----
+**PASO 5: GENERACIÓN FINAL**
+Si el usuario confirma o solicita cambios:
+1. Aplica las modificaciones.
+2. Genera la **planeación completa** para el número total de sesiones solicitadas.
+3. Estructura la respuesta final usando el formato estándar:
+   - 2.1 Descripción de la Unidad (Objetivos y Contenidos extraídos del programa).
+   - 2.2 Planeación por sesión (Fecha, Objetivo, Contenidos, Actividades, Producto, Instrumento).
 
-**REGLAS DE INTERACCIÓN:**
-- Si el usuario dice "vamos a planear", pregunta amablemente: "¡Con gusto, colega! ¿Podrías indicarme qué **Unidad** o **Tema** específico del programa de estudios deseas planear?"
-- Una vez que el usuario indique la unidad, busca dicha información en el contexto y genera la planeación completa llenando la estructura anterior.
-- Si faltan datos como fechas específicas o claves de grupo, coloca "Por definir" pero llena todo lo referente a contenidos pedagógicos con la información del PDF.
-
-Mantén el tono animador y profesional típico de Juventud 2.0.
+Mantén el tono amable y "Josefino" en todo momento.
 """
 
 # ═══════════════════════════════════════════════════════════════
@@ -576,7 +585,8 @@ if audio_data:
             if st.session_state.get("retriever"):
                 docs = st.session_state.retriever.invoke(prompt)
                 if docs:
-                    context_text = "\n\n".join([d.page_content for d in docs])
+                    # Incluimos la fuente para que el modelo sepa qué archivo está usando
+                    context_text = "\n\n---\n\n".join([f"Fuente: {doc.metadata.get('source', 'Desconocido')}\n{doc.page_content}" for doc in docs])
 
             full_prompt = current_prompt
             if context_text:
@@ -611,7 +621,8 @@ if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
     if st.session_state.get("retriever"):
         docs = st.session_state.retriever.invoke(prompt)
         if docs:
-            context_text = "\n\n".join([d.page_content for d in docs])
+            # Incluimos la fuente para que el modelo sepa qué archivo está usando
+            context_text = "\n\n---\n\n".join([f"Fuente: {doc.metadata.get('source', 'Desconocido')}\n{doc.page_content}" for doc in docs])
 
     full_prompt = current_prompt
     if context_text:
@@ -646,3 +657,4 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
+```
