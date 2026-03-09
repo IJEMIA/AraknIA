@@ -17,6 +17,52 @@ except ImportError:
     st.error("Faltan librerías. Instala con: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
     st.stop()
 
+# ═══════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE CARPETA Y CARGA DE DOCUMENTOS (MOVIDO AL INICIO)
+# ═══════════════════════════════════════════════════════════════
+DOCS_FOLDER = "documentos"
+
+@st.cache_resource
+def load_knowledge_base():
+    # Asegurar que la carpeta exista
+    if not os.path.exists(DOCS_FOLDER):
+        os.makedirs(DOCS_FOLDER)
+        return None, []
+
+    pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
+    if not pdf_files: 
+        return None, []
+
+    all_docs = []
+    valid_files = []
+
+    try:
+        for pdf_path in pdf_files:
+            try:
+                loader = PyPDFLoader(pdf_path)
+                docs = loader.load()
+                filename = os.path.basename(pdf_path)
+                for doc in docs: 
+                    doc.metadata["source"] = filename
+                all_docs.extend(docs)
+                valid_files.append(filename)
+            except Exception:
+                pass
+
+        if not all_docs: 
+            return None, []
+
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splits = text_splitter.split_documents(all_docs)
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        vectorstore = FAISS.from_documents(splits, embeddings)
+
+        return vectorstore.as_retriever(), valid_files
+
+    except Exception as e:
+        st.error(f"Error al crear base vectorial: {e}")
+        return None, []
+
 # CONFIGURACIÓN DE PÁGINA
 st.set_page_config(
     page_title="Juventud 2.0",
@@ -313,21 +359,38 @@ with st.sidebar:
     voice_enabled = st.checkbox("Activar voz de Juventud 2.0", value=True)
     st.markdown("---")
 
+    # Lógica de carga de archivos
     st.markdown("#### 📦 Cargar PDFs")
-    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs", type="zip", key="zip_uploader")
+    st.caption(f"Los archivos se guardan en la carpeta `{DOCS_FOLDER}`")
+    
+    uploaded_zip = st.file_uploader("Sube un ZIP con PDFs para añadir a la base de datos", type="zip", key="zip_uploader")
 
     if uploaded_zip:
+        # Verificamos si es un archivo nuevo para procesarlo
         if "processed_zip_name" not in st.session_state or st.session_state.processed_zip_name != uploaded_zip.name:
-            st.session_state.processed_zip_name = uploaded_zip.name
-            st.toast(f"Procesando {uploaded_zip.name}...")
+            try:
+                with zipfile.ZipFile(uploaded_zip, 'r') as z:
+                    z.extractall(DOCS_FOLDER)
+                st.session_state.processed_zip_name = uploaded_zip.name
+                st.toast(f"✅ Archivos extraídos en '{DOCS_FOLDER}'. Recargando base de datos...")
+                
+                # Limpiamos la caché para forzar la recarga de la base de datos
+                load_knowledge_base.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error al descomprimir: {e}")
 
     st.markdown("---")
 
-    st.markdown("#### 📚 Archivos")
+    st.markdown("#### 📚 Archivos Cargados")
+    # Mostramos los archivos actualmente en la base de datos
     if st.session_state.get("loaded_files"):
-        st.success(f"🟢 {len(st.session_state.loaded_files)} Activos")
+        st.success(f"🟢 {len(st.session_state.loaded_files)} Documentos Activos")
+        with st.expander("Ver lista"):
+            for f in st.session_state.loaded_files:
+                st.write(f"📄 {f}")
     else:
-        st.info("🔴 Repositorio Vacío")
+        st.info(f"🔴 Repositorio Vacío. Añade PDFs en la carpeta '{DOCS_FOLDER}' o sube un ZIP.")
 
     st.markdown("---")
 
@@ -360,56 +423,16 @@ Tus principios:
 2. "Adelante, siempre adelante".
 3. "Estar siempre útilmente ocupados".
 Tono: Cordial, amable, mentor. Dirígete al usuario como "Josefino/a".
+Si te preguntan sobre documentos, usa el contexto proporcionado para responder con precisión.
 """
 
 # ═══════════════════════════════════════════════════════════════
-# CARGA DE DOCUMENTOS
+# INICIALIZACIÓN DE SESIÓN Y BASE DE DATOS
 # ═══════════════════════════════════════════════════════════════
-DOCS_FOLDER = "documentos"
-
-@st.cache_resource
-def load_knowledge_base():
-    if not os.path.exists(DOCS_FOLDER):
-        os.makedirs(DOCS_FOLDER)
-        return None, []
-
-    pdf_files = glob.glob(os.path.join(DOCS_FOLDER, "*.pdf"))
-    if not pdf_files: 
-        return None, []
-
-    all_docs = []
-    valid_files = []
-
-    try:
-        for pdf_path in pdf_files:
-            try:
-                loader = PyPDFLoader(pdf_path)
-                docs = loader.load()
-                filename = os.path.basename(pdf_path)
-                for doc in docs: 
-                    doc.metadata["source"] = filename
-                all_docs.extend(docs)
-                valid_files.append(filename)
-            except Exception:
-                pass
-
-        if not all_docs: 
-            return None, []
-
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        splits = text_splitter.split_documents(all_docs)
-        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        vectorstore = FAISS.from_documents(splits, embeddings)
-
-        return vectorstore.as_retriever(), valid_files
-
-    except Exception:
-        return None, []
-
-# Inicialización de sesión
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
+# Cargamos la base de datos si no está en sesión o si fue limpiada
 if "retriever" not in st.session_state:
     retriever, loaded_files = load_knowledge_base()
     st.session_state.retriever = retriever
@@ -480,7 +503,7 @@ if audio_data:
 
             full_prompt = SYSTEM_PROMPT
             if context_text:
-                full_prompt += f"\n\nContexto:\n{context_text}"
+                full_prompt += f"\n\nContexto de documentos:\n{context_text}"
 
             formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
 
@@ -507,7 +530,7 @@ if prompt := st.chat_input("Escribe tu mensaje, joven josefino..."):
 
     full_prompt = SYSTEM_PROMPT
     if context_text:
-        full_prompt += f"\n\nContexto:\n{context_text}"
+        full_prompt += f"\n\nContexto de documentos:\n{context_text}"
 
     formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
 
