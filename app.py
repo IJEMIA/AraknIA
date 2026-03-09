@@ -1,3 +1,19 @@
+Aquí tienes la versión actualizada de `app.py`.
+
+He modificado el **`SYSTEM_PROMPT_PLANNING`** para incorporar el flujo exacto que solicitaste:
+1.  Activación ("Vamos a planear").
+2.  Pregunta por el Repositorio.
+3.  Pregunta por Unidad y Total de Sesiones.
+4.  Pregunta por Días de clase.
+5.  **NUEVO:** Pregunta por Criterios de Evaluación y Sesiones para ellos.
+6.  **NUEVO:** Pregunta por Fechas (Inicio, Término) y Días Festivos.
+7.  Genera 5 ejemplos.
+8.  Pregunta por cambios.
+9.  Generación final.
+
+Copia y pega este código completo:
+
+```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -430,7 +446,7 @@ except Exception as e:
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y MODO PLANEACIÓN (FLUJO MEJORADO)
+# PERSONALIDAD Y MODO PLANEACIÓN (FLUJO MEJORADO V2)
 # ═══════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT_BASE = """
@@ -456,7 +472,7 @@ Tu objetivo es guiar al usuario paso a paso para crear una planeación didáctic
 2. Si el usuario especifica un archivo (repositorio), prioriza la información de ese archivo (el contexto incluirá "Fuente: nombre_archivo.pdf").
 
 **FLUJO DE INTERACCIÓN OBLIGATORIO (Paso a Paso):**
-Sigue este orden preciso. No saltes pasos.
+Sigue este orden preciso. No saltes pasos ni los juntes en una sola respuesta.
 
 **PASO 1: ACTIVACIÓN**
 Si el usuario dice "vamos a planear", responde:
@@ -470,15 +486,24 @@ Una vez que el usuario indique el repositorio, pregunta:
 Una vez que el usuario indique la unidad y sesiones, pregunta:
 "Perfecto. ¿Qué **días de la semana** se imparten las clases?"
 
-**PASO 4: BORRADOR INICIAL (5 EJEMPLOS)**
-Con toda la información anterior (Repositorio, Unidad, Sesiones, Días):
+**PASO 4: CRITERIOS DE EVALUACIÓN**
+Una vez que el usuario indique los días, pregunta:
+"¿Cuáles son los **criterios de evaluación** que utilizaremos y **cuántas sesiones** destinaremos específicamente a dichos criterios? (Puedes tomarlos del programa o indicármelos tú)."
+
+**PASO 5: CALENDARIZACIÓN**
+Una vez que el usuario indique los criterios, pregunta:
+"Para organizar el calendario, indícame la **fecha de inicio** y la **fecha de término** de la planeación. ¿Hay algún **día festivo** o periodo inhábil que debamos ignorar?"
+
+**PASO 6: BORRADOR INICIAL (5 EJEMPLOS)**
+Con TODA la información anterior (Repositorio, Unidad, Sesiones, Días, Criterios, Fechas, Festivos):
 1. Busca en el contexto del documento indicado.
 2. Extrae los contenidos (Conceptuales, Procedimentales, Actitudinales) de esa unidad.
 3. Genera **EXACTAMENTE 5 SESIONES DE EJEMPLO**.
-   - Usa el formato: Objetivo (Taxonomía de Bloom), Contenidos, Actividades (Inicio, Desarrollo, Cierre), Evaluación.
+   - Usa el formato: Fecha, Objetivo (Taxonomía de Bloom), Contenidos, Actividades (Inicio, Desarrollo, Cierre), Evaluación.
+   - Distribuye las sesiones de criterios según lo solicitado.
 4. Al final, pregunta: "Estos son 5 ejemplos. ¿Requieres algún cambio antes de generar la planeación completa?"
 
-**PASO 5: GENERACIÓN FINAL**
+**PASO 7: GENERACIÓN FINAL**
 Si el usuario confirma o solicita cambios:
 1. Aplica las modificaciones.
 2. Genera la **planeación completa** para el número total de sesiones solicitadas.
@@ -647,3 +672,4 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
+```
