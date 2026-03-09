@@ -63,7 +63,8 @@ def load_knowledge_base():
         return None, []
 
     try:
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        # MEJORA: Aumentamos chunk_size para que lea más contexto de cada vez
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
         splits = text_splitter.split_documents(all_docs)
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(splits, embeddings)
@@ -454,8 +455,8 @@ Eres **Juventud 2.0 - Experto en Planeación Didáctica**.
 
 **REGLAS DE ORO (INQUEBRANTABLE):**
 1. **VERACIDAD ABSOLUTA**: Toda información debe provenir **EXCLUSIVAMENTE** del texto proporcionado en la sección "Contexto de documentos".
-2. **PROHIBIDO INVENTAR**: Si el contexto no muestra explícitamente el nombre de una unidad o contenido, responde: "No pude encontrar esa información específica en el archivo seleccionado".
-3. Si el usuario selecciona un archivo por número, tu prioridad es buscar en el contexto de ese archivo.
+2. **PROHIBIDO INVENTAR**: Si el contexto no muestra explícitamente el nombre de una unidad, contenido o tema, responde: "No pude encontrar esa información específica en el archivo seleccionado".
+3. **EXHAUSTIVIDAD**: Lista TODAS las unidades que encuentres en el texto. Si el texto dice "Unidad 1, 2, 3", lista las tres. No te detengas en la primera.
 
 **FLUJO DE INTERACCIÓN:**
 
@@ -466,14 +467,13 @@ Si el usuario dice "vamos a planear":
 
 **PASO 2: LECTURA Y LISTADO DE UNIDADES**
 Cuando el usuario responda con un número:
-1. Identifica el nombre del archivo correspondiente.
-2. Analiza el **Contexto de documentos** provisto.
-3. Extrae **EXCLUSIVAMENTE** del contexto los nombres de las Unidades, Módulos o Bloques.
-4. Enumera las unidades encontradas (ej: 1. Unidad I: ..., 2. Unidad II: ...).
-5. Pregunta: "¿Qué **número** de unidad(es) vamos a planear?"
+1. Identifica el nombre del archivo.
+2. Analiza el **Contexto de documentos** (que proviene de diversas partes del PDF).
+3. Extrae y LISTA todas las Unidades/Bloques encontrados con su número y título.
+4. Pregunta: "¿Qué **número** de unidad(es) vamos a planear?"
 
 **PASO 3: SESIONES**
-Pregunta: "¿Cuántas **sesiones** en total necesita para esta planeación?"
+Pregunta: "¿Cuántas **sesiones** en total necesita?"
 
 **PASO 4: DIAS DE CLASE**
 Pregunta: "¿Qué **días de la semana** se imparten las clases?"
@@ -549,20 +549,26 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
     if selected_file_index is not None:
         target_filename = loaded_files[selected_file_index]
         try:
-            docs = vectorstore.similarity_search(
-                query="Unidades Bloques Contenido Temario Estructura Títulos", 
-                k=30, 
-                fetch_k=100, 
+            # CORRECCIÓN CLAVE: Usamos MMR (Maximal Marginal Relevance)
+            # Esto permite traer fragmentos DIVERSOS de todo el documento, no solo los más parecidos.
+            # k=50: Traer 50 fragmentos.
+            # fetch_k=200: Buscar en los 200 más relevantes y elegir los 50 más diversos.
+            docs = vectorstore.max_marginal_relevance_search(
+                query="Unidades Bloques Contenido Temario Estructura Títulos Competencias", 
+                k=50, 
+                fetch_k=200, 
                 filter={"source": target_filename}
             )
+            
             if not docs:
                 return f"El archivo {target_filename} parece estar vacío o no se pudo leer su estructura.", target_filename
             
-            context_text = "\n\n---\n\n".join([f"Fragmento de {doc.metadata.get('source')}:\n{doc.page_content}" for doc in docs])
+            context_text = "\n\n---\n\n".join([f"Página/Fragmento de {doc.metadata.get('source')}:\n{doc.page_content}" for doc in docs])
             return context_text, target_filename
         except Exception as e:
             return f"Error al leer {target_filename}: {e}", target_filename
     else:
+        # Búsqueda general
         try:
             retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
             docs = retriever.invoke(user_input)
@@ -574,7 +580,6 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
 # INTERFAZ DE CHAT
 # ═══════════════════════════════════════════════════════════════
 
-# CORRECCIÓN: Inicializamos audio_data antes de usarla para evitar NameError
 audio_data = None
 
 st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
