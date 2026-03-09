@@ -1,19 +1,3 @@
-Aquí tienes la versión actualizada de `app.py`.
-
-He modificado el **`SYSTEM_PROMPT_PLANNING`** para incorporar el flujo exacto que solicitaste:
-1.  Activación ("Vamos a planear").
-2.  Pregunta por el Repositorio.
-3.  Pregunta por Unidad y Total de Sesiones.
-4.  Pregunta por Días de clase.
-5.  **NUEVO:** Pregunta por Criterios de Evaluación y Sesiones para ellos.
-6.  **NUEVO:** Pregunta por Fechas (Inicio, Término) y Días Festivos.
-7.  Genera 5 ejemplos.
-8.  Pregunta por cambios.
-9.  Generación final.
-
-Copia y pega este código completo:
-
-```python
 import streamlit as st
 from openai import OpenAI
 import os
@@ -672,4 +656,3 @@ with chat_container:
                     )
 
 st.markdown("</div>", unsafe_allow_html=True)
-```
