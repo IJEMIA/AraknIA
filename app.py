@@ -1,8 +1,7 @@
 import streamlit as st
 from openai import OpenAI
-import speech_recognition as sr
-import pyttsx3
-import threading
+from gtts import gTTS
+import io
 
 # CONFIGURACIÓN DE PÁGINA
 st.set_page_config(
@@ -23,7 +22,6 @@ css_juventus = """
     .stApp {max-width: 100%; padding: 0;}
     .stChatMessage {padding: 0.5rem 0;}
     .stChatInputContainer {padding-bottom: 1rem;}
-    /* Ocultar botones flotantes de Streamlit que no sirven para el chat */
     .stDeployButton {display: none;}
     [data-testid="stToolbar"] {display: none;}
     [data-testid="stStatusWidget"] {display: none;}
@@ -75,47 +73,17 @@ except Exception:
     st.error("❌ Error de configuración: Revisa los 'Secrets' en Streamlit Cloud.")
     st.stop()
 
-# MOTOR DE VOZ (TTS)
-@st.cache_resource
-def init_tts_engine():
+# MOTOR DE VOZ WEB (gTTS)
+def text_to_speech_web(text):
+    """Convierte texto a audio MP3 para reproducir en el navegador."""
     try:
-        engine = pyttsx3.init()
-        engine.setProperty('rate', 150)
-        engine.setProperty('volume', 0.9)
-        return engine
-    except:
-        return None
-
-tts_engine = init_tts_engine()
-
-def text_to_speech(text):
-    """Convierte texto a voz y lo reproduce en un hilo separado."""
-    if tts_engine:
-        def speak():
-            tts_engine.say(text)
-            tts_engine.runAndWait()
-        threading.Thread(target=speak, daemon=True).start()
-
-def speech_to_text():
-    """Captura audio del micrófono y lo convierte a texto."""
-    try:
-        recognizer = sr.Recognizer()
-        with sr.Microphone() as source:
-            st.info("🎤 Escuchando... Di tu pregunta")
-            recognizer.adjust_for_ambient_noise(source, duration=1)
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-        
-        with st.spinner("🔄 Procesando..."):
-            text = recognizer.recognize_google(audio, language='es-ES')
-            return text
-    except sr.WaitTimeoutError:
-        st.warning("⏰ No te escuché. Intenta de nuevo.")
-        return None
-    except sr.UnknownValueError:
-        st.warning("🤔 No entendí lo que dijiste. Por favor, repite.")
-        return None
+        tts = gTTS(text=text, lang='es', slow=False)
+        audio_fp = io.BytesIO()
+        tts.write_to_fp(audio_fp)
+        audio_fp.seek(0)
+        return audio_fp
     except Exception as e:
-        st.error(f"❌ Error en reconocimiento: {str(e)}")
+        # Si falla la generación de audio, no detiene la app, solo no reproduce
         return None
 
 # HISTORIAL DE CHAT
@@ -128,7 +96,7 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# FUNCIÓN PARA PROCESAR RESPUESTA (Evitar repetir código)
+# FUNCIÓN PARA PROCESAR RESPUESTA
 def procesar_respuesta(user_input):
     # Muestra mensaje del usuario
     with st.chat_message("user"):
@@ -137,6 +105,9 @@ def procesar_respuesta(user_input):
 
     # Genera respuesta
     with st.chat_message("assistant"):
+        response_placeholder = st.empty()
+        full_response = ""
+        
         try:
             mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
             stream = client.chat.completions.create(
@@ -144,25 +115,28 @@ def procesar_respuesta(user_input):
                 messages=mensajes_api,
                 stream=True,
             )
-            response = st.write_stream(stream)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            text_to_speech(response) # Reproduce respuesta
-        except Exception:
-            st.error("⚠️ Juventus encontró un obstáculo. Intentemos de nuevo.")
+            
+            # Stream de texto (efecto de escritura)
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    full_response += chunk.choices[0].delta.content
+                    response_placeholder.markdown(full_response + "▌")
+            
+            response_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            
+            # --- REPRODUCCIÓN DE VOZ ---
+            if full_response:
+                audio_bytes = text_to_speech_web(full_response)
+                if audio_bytes:
+                    # autoplay=True intenta reproducir automáticamente
+                    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+
+        except Exception as e:
+            st.error(f"⚠️ Juventus encontró un obstáculo: {str(e)}")
+            # Limpieza en caso de error
             if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
                 st.session_state.messages.pop()
-            st.rerun()
-
-# CONTROLES DE VOZ (BOTÓN)
-col1, col2 = st.columns([1, 3])
-with col1:
-    if st.button("🎤 Escuchar", use_container_width=True):
-        texto_voz = speech_to_text()
-        if texto_voz:
-            procesar_respuesta(texto_voz)
-
-with col2:
-    st.markdown("💡 *Puedes escribir o usar el botón de escucha*")
 
 # ENTRADA DE TEXTO MANUAL
 if prompt := st.chat_input("Escribe tu pregunta o reflexión..."):
